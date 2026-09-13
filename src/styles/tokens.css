@@ -1,0 +1,115 @@
+/* Checkdex — tokens de design
+   Direção: "instrumento de coleção" — vermelho de Pokébola, lente azul, tipografia
+   arredondada (Nunito). A cor de tipo é dado, não enfeite.
+   A fonte Nunito é carregada no <head> do index.html. */
+
+:root {
+  /* superfícies */
+  --bg: #eef0f3;
+  --surface: #ffffff;
+  --surface-2: #f7f8fa;
+  --border: #e7e9ee;
+  --border-strong: #d6d9e0;
+
+  /* texto */
+  --ink: #1a1a1f;
+  --ink-soft: #5a5f6b;
+  --ink-faint: #8b909c;
+
+  /* marca */
+  --red: #dc0a2d;          /* vermelho de Pokébola */
+  --red-deep: #a20a24;
+  --lens: #2a75bb;         /* azul da lente / logo Pokémon — foco e links */
+  --caught: #2ba14f;       /* capturado */
+  --caught-soft: #e6f5ec;
+  --gold: #f7c521;         /* linha 100% completa */
+
+  /* chance de encontro */
+  --chance-high: #2ba14f;
+  --chance-mid: #d99700;
+  --chance-low: #d0413b;
+
+  /* arco-íris das Mega Evoluções (borda da carta marcada, legenda selecionada) */
+  --mega-rainbow: linear-gradient(115deg,
+    #ff5a5a 0%, #ff9e3d 18%, #ffe14d 36%, #46d17a 55%, #3aa0e6 74%, #a366ff 92%, #ff5a9e 100%);
+
+  /* forma */
+  --r-1: 8px;
+  --r-2: 12px;
+  --r-3: 18px;
+  --r-4: 24px;
+  --r-pill: 999px;
+
+  /* elevação — usada com parcimônia; só o card aberto sobe de verdade */
+  --shadow-1: 0 1px 2px rgba(20, 22, 30, 0.05);
+  --shadow-2: 0 4px 14px rgba(20, 22, 30, 0.09);
+  --shadow-3: 0 18px 44px rgba(20, 22, 30, 0.16);
+
+  /* espaçamento */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 36px;
+
+  --content-w: 1240px;
+
+  --font: "Nunito", ui-rounded, "Segoe UI", system-ui, -apple-system, sans-serif;
+
+  color-scheme: light;
+}
+
+/* ---- cores de tipo ---- tinta sempre branca; os tons claros foram
+   escurecidos o bastante pra o texto/símbolo branco ficar legível */
+:root {
+  --type-normal: #83868d;   --type-normal-ink: #fff;
+  --type-fire: #e2523a;     --type-fire-ink: #fff;
+  --type-water: #3a8ddc;    --type-water-ink: #fff;
+  --type-grass: #46a047;    --type-grass-ink: #fff;
+  --type-electric: #bd8b00; --type-electric-ink: #fff;
+  --type-ice: #3ea0b4;      --type-ice-ink: #fff;
+  --type-fighting: #d1495b; --type-fighting-ink: #fff;
+  --type-poison: #a457c4;   --type-poison-ink: #fff;
+  --type-ground: #b98a3c;   --type-ground-ink: #fff;
+  --type-flying: #7290cd;   --type-flying-ink: #fff;
+  --type-psychic: #e0578f;  --type-psychic-ink: #fff;
+  --type-bug: #83941c;      --type-bug-ink: #fff;
+  --type-rock: #9d8850;     --type-rock-ink: #fff;
+  --type-ghost: #6a5b9c;    --type-ghost-ink: #fff;
+  --type-dragon: #6656e0;   --type-dragon-ink: #fff;
+  --type-dark: #565059;     --type-dark-ink: #fff;
+  --type-steel: #5d8aa6;    --type-steel-ink: #fff;
+  --type-fairy: #d56fb2;    --type-fairy-ink: #fff;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+[hidden] { display: none !important; }
+img { max-width: 100%; }
+
+body {
+  font-family: var(--font);
+  color: var(--ink);
+  background: var(--bg);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+a { color: var(--lens); text-underline-offset: 2px; }
+
+button { font-family: inherit; color: inherit; }
+
+:focus-visible {
+  outline: 3px solid var(--lens);
+  outline-offset: 2px;
+  border-radius: var(--r-1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

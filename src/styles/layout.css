@@ -1,0 +1,310 @@
+/* Checkdex — layout: topbar (masthead + controles) e grade da dex */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+}
+
+/* ---------- masthead (faixa vermelha) ---------- */
+.masthead {
+  background: var(--red);
+  color: #fff;
+}
+.masthead__inner {
+  max-width: var(--content-w);
+  margin: 0 auto;
+  min-height: 52px;
+  padding: 8px var(--s-5);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+  text-decoration: none;
+  flex: none;
+}
+.brand__ball {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  display: block;
+}
+.brand__name {
+  font-weight: 900;
+  font-size: 1.25rem;
+  letter-spacing: -0.01em;
+}
+
+/* contador = leitura de progresso, não só um número */
+.tally {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas: "nums word" "meter meter";
+  align-items: center;
+  gap: 2px 10px;
+  min-width: 0;
+  max-width: 340px;
+  flex: 1;
+}
+.tally__nums { grid-area: nums; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tally__nums b { font-size: 1.05rem; }
+.tally__nums b::after { content: " / "; opacity: 0.5; font-weight: 600; }
+.tally__word {
+  grid-area: word;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tally__meter {
+  grid-area: meter;
+  height: 4px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.25);
+  overflow: hidden;
+}
+.tally__meter i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #fff;
+  transition: width 0.4s ease;
+}
+
+/* contadores secundários (mega stones / shinies) */
+.tallies {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-width: 0;
+  flex: 1;
+}
+.minicount {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px 4px 8px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.14);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  cursor: default;
+}
+.minicount b { font-size: 0.95rem; }
+.minicount b::after { content: " / "; opacity: 0.55; font-weight: 600; }
+.minicount [data-role$="-total"] { opacity: 0.7; font-weight: 700; }
+.minicount__word {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+}
+.minicount__ico {
+  width: 16px; height: 16px;
+  flex: none;
+}
+.minicount--mega .minicount__ico {
+  background: url("../../assets/mega-dna.png") center / contain no-repeat;
+}
+.minicount--shiny .minicount__ico {
+  background: var(--gold);
+  -webkit-mask: url("../../assets/shiny.png") center / contain no-repeat;
+          mask: url("../../assets/shiny.png") center / contain no-repeat;
+}
+.minicount--reg .minicount__ico {
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+/* ---------- controles ---------- */
+.controls {
+  max-width: var(--content-w);
+  margin: 0 auto;
+  padding: var(--s-3) var(--s-5) var(--s-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+.filters { display: flex; flex-direction: column; gap: var(--s-2); }
+.filters__row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-width: 0;
+}
+.filters__row > .scroller { flex: 1 1 auto; min-width: 0; }
+.filters__type { flex: 0 0 auto; }
+.filters__trait { flex: 0 0 auto; }
+.filters__row > .locpicks { flex: 0 0 auto; }
+.locpicks { display: flex; gap: 6px; }
+
+.scroller {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  margin: 0 -6px;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 16px, #000 calc(100% - 16px), transparent);
+          mask-image: linear-gradient(90deg, transparent, #000 16px, #000 calc(100% - 16px), transparent);
+}
+.scroller::-webkit-scrollbar { display: none; }
+.chips {
+  display: flex;
+  gap: 6px;
+  width: max-content;
+  padding: 2px 6px;
+}
+
+/* ---------- cabeçalho de local (breadcrumb) ---------- */
+.dexhead {
+  max-width: calc(var(--content-w) - 2 * var(--s-5));
+  margin: var(--s-5) auto calc(-1 * var(--s-2));
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--red);
+  border-radius: var(--r-2);
+}
+.dexhead__info { min-width: 0; display: flex; flex-direction: column; }
+.dexhead__info strong { font-size: 1.05rem; font-weight: 900; }
+.dexhead__info span { font-size: 0.82rem; font-weight: 600; color: var(--ink-soft); }
+
+/* ---------- grade ---------- */
+.dex {
+  max-width: var(--content-w);
+  margin: var(--s-5) auto var(--s-6);
+  padding: 0 var(--s-5);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(260px, 30vw, 360px), 1fr));
+  gap: var(--s-3);
+  align-content: start;
+}
+.dex .mon.is-open {
+  grid-column: 1 / -1;
+  max-width: 880px;
+  justify-self: center;
+  width: 100%;
+}
+.dex__section {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  margin-top: var(--s-2);
+  font-weight: 800;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+.dex__section::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.dex__section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.dex__section-icon {
+  width: 18px;
+  height: 20px;
+  flex: none;
+  background: currentColor;
+}
+.dex__section-icon--fish {
+  -webkit-mask: url("../../assets/icons/magikarp.png") center / contain no-repeat;
+          mask: url("../../assets/icons/magikarp.png") center / contain no-repeat;
+}
+.dex__section-icon--surf {
+  width: 24px;
+  -webkit-mask: url("../../assets/icons/lapras.png") center / contain no-repeat;
+          mask: url("../../assets/icons/lapras.png") center / contain no-repeat;
+}
+
+/* ---------- estado vazio ---------- */
+.empty-state {
+  max-width: 380px;
+  margin: 14vh auto;
+  text-align: center;
+  color: var(--ink-soft);
+}
+.empty-state__title { font-weight: 800; font-size: 1.1rem; color: var(--ink); margin: 0 0 2px; }
+.empty-state p { margin: 0 0 var(--s-3); }
+.empty-state__mark {
+  display: block;
+  width: 48px; height: 48px;
+  margin: 0 auto var(--s-4);
+  border-radius: 50%;
+  background:
+    linear-gradient(#fff 0 47%, var(--ink) 47% 53%, #fff 53% 100%),
+    var(--surface);
+  box-shadow: inset 0 0 0 4px var(--border-strong), inset 0 0 0 10px #fff, inset 0 0 0 13px var(--border-strong);
+  opacity: 0.7;
+}
+/* nada marcado ainda → Snorlax dormindo (contornado, mesma técnica do
+   magikarp/lapras) no lugar do círculo genérico */
+.empty-state--caught .empty-state__mark {
+  width: 128px; height: 128px;
+  border-radius: 0;
+  background: currentColor;
+  -webkit-mask: url("../../assets/snorlax.png") center / contain no-repeat;
+          mask: url("../../assets/snorlax.png") center / contain no-repeat;
+  box-shadow: none;
+  opacity: 1;
+}
+
+/* ---------- responsivo ---------- */
+@media (max-width: 900px) {
+  .masthead__inner, .controls { padding-left: var(--s-4); padding-right: var(--s-4); }
+  .dex { padding: 0 var(--s-4); }
+  .dexhead { margin-left: var(--s-4); margin-right: var(--s-4); max-width: none; }
+}
+@media (max-width: 620px) {
+  .filters__row { flex-wrap: wrap; }
+  .filters__type { flex: 1 1 100%; order: -3; }
+  .filters__trait { flex: 1 1 100%; order: -2; }
+  .caught-toggle { order: -1; }
+  .filters__row > .locpicks { flex: 1 1 100%; order: -1; }
+  .locpicks { flex: 1 1 0; }
+  .locpick { flex: 1 1 0; min-width: 0; }
+}
+@media (max-width: 820px) {
+  .tallies { flex-wrap: wrap; }
+  .minicount__word { display: none; }
+}
+@media (max-width: 560px) {
+  .masthead__inner {
+    flex-wrap: wrap;
+    padding: 8px var(--s-4) 10px;
+    gap: 8px var(--s-3);
+  }
+  .tallies { width: 100%; }
+  .tally { max-width: none; grid-template-columns: auto 1fr; }
+  .dex {
+    margin-top: var(--s-4);
+    padding: 0 var(--s-3);
+    grid-template-columns: 1fr;
+    gap: var(--s-2);
+  }
+  .dexhead { margin-left: var(--s-3); margin-right: var(--s-3); flex-wrap: wrap; }
+}

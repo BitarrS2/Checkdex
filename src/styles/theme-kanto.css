@@ -1,0 +1,292 @@
+/* Checkdex — camada "Kanto OS"
+   Carregada por último. Divide-se em:
+     1. CAMADA COMPARTILHADA — tipografia mono, cursor da marca, prompt de
+        busca, chips, brilho da borda-tipo… vale nos DOIS temas.
+     2. SÓ TEMA ESCURO — :root:not([data-theme="light"]) — paleta dark e
+        cromo (fundo, topbar de vidro, masthead em gradiente).
+   O switch (data-role="theme-toggle") alterna [data-theme] no <html> e
+   salva em localStorage. Pra reverter tudo, remova o <link> deste arquivo. */
+
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap");
+@keyframes cd-blink { 50% { opacity: 0; } }
+
+/* ============================================================
+   1. CAMADA COMPARTILHADA  (claro + escuro)
+   ============================================================ */
+
+:root {
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", "Consolas", monospace;
+  --grid-line: color-mix(in srgb, var(--lens) 9%, transparent);
+  --chip-on-ink: #fff;   /* tinta do chip ativo (fundo = --lens) */
+}
+
+/* grade sutil de "tela" atrás de tudo */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 46px 46px;
+  -webkit-mask-image: radial-gradient(circle at 50% -5%, #000, transparent 70%);
+          mask-image: radial-gradient(circle at 50% -5%, #000, transparent 70%);
+}
+
+/* ---------- masthead: filete de acento + marca-terminal ---------- */
+.masthead { position: relative; }
+.masthead::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--lens) 70%, transparent), transparent);
+}
+.masthead__inner { min-height: 60px; }
+
+.brand__name {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 1.3rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.brand__name::after {
+  content: "_";
+  margin-left: 1px;
+  color: rgba(255, 255, 255, 0.72);
+  animation: cd-blink 1.15s steps(1) infinite;
+}
+
+/* contadores em monospace */
+.tally__nums, .tally__word,
+.minicount, .minicount__word { font-family: var(--font-mono); }
+.tally__word, .minicount__word { text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* ---------- busca: prompt de terminal ---------- */
+.search__icon { display: none; }
+.search::before {
+  content: ">";
+  position: absolute;
+  left: 18px; top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--lens);
+  pointer-events: none;
+}
+.search input { font-family: var(--font-mono); font-size: 0.95rem; }
+.search input::placeholder { font-family: var(--font-mono); }
+.search input:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--lens) 22%, transparent); }
+
+/* ---------- controles / filtros em monospace ---------- */
+.chip {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.72rem;
+}
+.chip[aria-pressed="true"] {
+  background: var(--lens);
+  border-color: var(--lens);
+  color: var(--chip-on-ink);
+}
+.chip--gen[aria-pressed="true"],
+.chip--game[aria-pressed="true"] {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+}
+.caught-toggle, .shiny-toggle__label,
+.locpick__btn, .typepick__btn, .gp__btn,
+.traitpick__opt, .typepick__opt, .traitpick__chip,
+.enc__acc-name, .enc__acc-gen { font-family: var(--font-mono); }
+
+/* ---------- cabeçalho de local ---------- */
+.dexhead { border-left-color: var(--lens); }
+.dexhead__info strong {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/* ---------- cards: borda-tipo que brilha ---------- */
+.mon::before {
+  opacity: 0.75;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 50%, transparent);
+}
+.dex .mon { transition: border-color 0.15s, box-shadow 0.15s, background 0.15s, transform 0.15s; }
+.dex .mon:hover {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--border-strong));
+  box-shadow: 0 10px 26px -12px color-mix(in srgb, var(--accent) 42%, transparent);
+}
+.mon.is-caught { box-shadow: 0 6px 20px -12px color-mix(in srgb, var(--accent) 50%, transparent); }
+.mon.is-caught-shiny { box-shadow: 0 6px 20px -10px color-mix(in srgb, var(--gold) 42%, transparent); }
+.mon.is-open {
+  box-shadow: var(--shadow-3), 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+.mon__name { font-family: var(--font-mono); letter-spacing: 0; font-weight: 800; }
+.mon__num, .mon__evo, .evo__id, .evo__lvl,
+.stats__val, .enc__lvl, .mon__facts, .mon__lineprog { font-family: var(--font-mono); }
+
+/* ---------- abas do painel ---------- */
+.tabs button {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-size: 0.74rem;
+}
+.tabs button[aria-selected="true"] {
+  color: var(--lens);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lens) 42%, transparent);
+}
+.tabctrl__label, .builds__label, .dfx__label { font-family: var(--font-mono); }
+
+/* toggle simples ("onde encontrar") — ciano quando ativo;
+   segs especializados (--mons/--lvl/--rank/--mode) mantêm a pintura própria */
+.seg:not([class*="--"]) button[aria-pressed="true"] {
+  background: var(--lens);
+  color: var(--chip-on-ink);
+  box-shadow: none;
+}
+
+/* ============================================================
+   2. SÓ TEMA ESCURO
+   ============================================================ */
+
+:root:not([data-theme="light"]) {
+  --bg: #0a0d15;
+  --surface: #141a29;
+  --surface-2: #1c2436;
+  --border: #28324a;
+  --border-strong: #3b4a68;
+
+  --ink: #eef1f8;
+  --ink-soft: #a7b0c4;
+  --ink-faint: #6f7a92;
+
+  --red: #ee2b34;
+  --red-deep: #c1161f;
+  --lens: #35c9e6;
+  --caught: #34c95f;
+  --caught-soft: #12331f;
+  --gold: #f7c521;
+
+  --chance-high: #34c95f;
+  --chance-mid: #e0a52a;
+  --chance-low: #e2564f;
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-3: 0 24px 60px rgba(0, 0, 0, 0.62);
+
+  --grid-line: color-mix(in srgb, var(--lens) 7%, transparent);
+  --chip-on-ink: #04121a;
+
+  color-scheme: dark;
+
+  --type-normal: #9498a0;
+  --type-fire: #f2603f;
+  --type-water: #3f97e6;
+  --type-grass: #4fb64f;
+  --type-electric: #e0ad1e;
+  --type-ice: #48b7cc;
+  --type-fighting: #e05365;
+  --type-poison: #b866d6;
+  --type-ground: #cd9846;
+  --type-flying: #8aa6de;
+  --type-psychic: #f0669b;
+  --type-bug: #9aad24;
+  --type-rock: #b29a5c;
+  --type-ghost: #7d6cb8;
+  --type-dragon: #7a6bf0;
+  --type-dark: #6b6470;
+  --type-steel: #6ea0bd;
+  --type-fairy: #e07dc0;
+}
+
+:root:not([data-theme="light"]) body {
+  background:
+    radial-gradient(1100px 560px at 10% -10%, color-mix(in srgb, var(--red) 24%, transparent), transparent 62%),
+    radial-gradient(960px 680px at 100% -4%, color-mix(in srgb, var(--lens) 15%, transparent), transparent 56%),
+    linear-gradient(180deg, #0c101b, #090c14);
+  background-attachment: fixed;
+}
+
+:root:not([data-theme="light"]) * { scrollbar-color: var(--border-strong) transparent; }
+
+/* cor de realce ao passar o mouse sobre o card */
+:root:not([data-theme="light"]) .dex .mon:not(.is-open):hover { background: #1b2138; }
+:root[data-theme="light"] .dex .mon:not(.is-open):hover { background: #eef0f3; }
+
+:root:not([data-theme="light"]) .topbar {
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+          backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 16px 40px -16px rgba(0, 0, 0, 0.7);
+}
+
+:root:not([data-theme="light"]) .masthead {
+  background: linear-gradient(180deg, #f43640, #d3161f);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 10px 34px -14px color-mix(in srgb, var(--red) 75%, transparent);
+}
+:root:not([data-theme="light"]) .brand__ball { filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.45)); }
+
+:root:not([data-theme="light"]) .tabs { background: rgba(0, 0, 0, 0.28); border-color: var(--border); }
+:root:not([data-theme="light"]) .tabs button[aria-selected="true"] { background: var(--surface); }
+:root:not([data-theme="light"]) .seg { background: rgba(0, 0, 0, 0.28); }
+
+:root:not([data-theme="light"]) .to-top { filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.6)); }
+:root:not([data-theme="light"]) .to-top__ring { fill: var(--surface); stroke: var(--lens); }
+:root:not([data-theme="light"]) .to-top__base { fill: #e9edf6; }
+:root:not([data-theme="light"]) .to-top__band { fill: #0a0d15; }
+
+/* ============================================================
+   Switch de tema — na faixa vermelha (os dois modos)
+     modo escuro -> Solrock  (clica pra ir ao claro)
+     modo claro  -> Lunatone (clica pra ir ao escuro)
+   Ícones em silhueta via mask (mesma técnica de .dex__section-icon).
+   ============================================================ */
+.theme-toggle {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px; height: 34px;
+  margin-left: 6px;
+  padding: 0;
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s;
+}
+.theme-toggle:hover { background: rgba(255, 255, 255, 0.24); border-color: rgba(255, 255, 255, 0.7); transform: rotate(-12deg); }
+.theme-toggle:active { transform: scale(0.9); }
+
+.theme-toggle__ico {
+  display: block;
+  background: currentColor;
+}
+.theme-toggle__sun {
+  width: 23px; height: 23px;
+  -webkit-mask: url("../../assets/icons/solrock.png") center / contain no-repeat;
+          mask: url("../../assets/icons/solrock.png") center / contain no-repeat;
+}
+.theme-toggle__moon {
+  width: 20px; height: 20px;
+  -webkit-mask: url("../../assets/icons/lunatone.png") center / contain no-repeat;
+          mask: url("../../assets/icons/lunatone.png") center / contain no-repeat;
+}
+
+/* mostra o ícone do modo atual */
+.theme-toggle__moon { display: none; }
+:root[data-theme="light"] .theme-toggle__sun { display: none; }
+:root[data-theme="light"] .theme-toggle__moon { display: block; }

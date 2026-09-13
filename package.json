@@ -1,0 +1,12 @@
+{
+  "name": "checkdex",
+  "version": "0.1.0",
+  "description": "Pokédex web para marcar Pokémon capturados e pesquisar evolução, locais e builds por jogo e geração.",
+  "type": "module",
+  "scripts": {
+    "build:data": "node scripts/build-data.mjs --gen all",
+    "build:data:gen1": "node scripts/build-data.mjs --gen 1",
+    "serve": "node scripts/serve.mjs"
+  },
+  "license": "MIT"
+}

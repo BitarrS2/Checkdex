@@ -1,0 +1,583 @@
+/* Checkdex — Times de batalha: monta times de 6 Pokémon (item / natureza / EVs),
+   numa caixa ao estilo "PC de batalha". Overlay de tela cheia sobre a dex. */
+
+html.teamz-open,
+html.teamz-open body { overflow: hidden; }
+
+/* ---------- botão de entrada (masthead) ---------- */
+.teams-nav {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  border-radius: var(--r-pill);
+  padding: 6px 14px 6px 10px;
+  margin-left: 6px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font: inherit;
+  font-weight: 800;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.teams-nav:hover { background: rgba(255, 255, 255, 0.24); border-color: rgba(255, 255, 255, 0.7); }
+.teams-nav__ico { width: 18px; height: 18px; fill: #fff; flex: none; }
+@media (max-width: 560px) { .teams-nav span:not(.teams-nav__ico) { display: none; } .teams-nav { padding: 6px; } }
+
+/* ---------- overlay de tela cheia ---------- */
+.teamz {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  overflow-y: auto;
+}
+
+.teamz__top {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-5);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-2);
+}
+.teamz__back {
+  border: 2px solid var(--border-strong);
+  background: var(--surface-2);
+  color: var(--ink);
+  border-radius: var(--r-pill);
+  padding: 8px 16px;
+  font: inherit;
+  font-weight: 800;
+  font-size: 0.85rem;
+  cursor: pointer;
+  flex: none;
+}
+.teamz__back:hover { border-color: var(--ink-faint); }
+
+.teamz__switch { display: flex; align-items: center; gap: 8px; flex: none; }
+.teamz__select {
+  border: 2px solid var(--border-strong);
+  background: var(--surface-2);
+  color: var(--ink);
+  border-radius: var(--r-pill);
+  padding: 8px 14px;
+  font: inherit;
+  font-weight: 800;
+  font-size: 0.85rem;
+  max-width: 180px;
+}
+.teamz__btn {
+  border: 2px solid var(--border-strong);
+  background: var(--surface-2);
+  color: var(--ink-soft);
+  border-radius: var(--r-pill);
+  padding: 7px 14px;
+  font: inherit;
+  font-weight: 800;
+  font-size: 0.82rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.teamz__btn:hover { border-color: var(--lens); color: var(--lens); }
+.teamz__btn--danger:hover { border-color: var(--red); color: var(--red); }
+
+.teamz__name {
+  flex: 1 1 220px;
+  min-width: 140px;
+  border: 2px solid var(--border-strong);
+  background: var(--surface-2);
+  color: var(--ink);
+  border-radius: var(--r-pill);
+  padding: 9px 16px;
+  font: inherit;
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+.teamz__name:focus { border-color: var(--lens); outline: none; background: var(--surface); }
+
+.teamz__body {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: var(--s-6) var(--s-5);
+}
+
+/* ---------- a caixa (grade de 6 espaços) ---------- */
+/* Uma "pasta" só, sem elemento flutuando por cima: o canto superior direito
+   dobrado (`.pcbox__fold`) fica recortado junto com o border-radius da caixa
+   (overflow:hidden), como o ícone de pasta com a quina virada. */
+.pcbox {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  padding: var(--s-6);
+  border-radius: var(--r-4);
+  background: linear-gradient(180deg, #f43640, #d3161f);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    var(--shadow-3);
+  overflow: hidden;
+}
+.pcbox__fold {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 104px;
+  height: 104px;
+  clip-path: polygon(100% 0, 0 0, 100% 100%);
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.3));
+  box-shadow: -3px 3px 8px -2px rgba(0, 0, 0, 0.4);
+}
+.pcbox__fold::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-top: 3px solid rgba(255, 255, 255, 0.5);
+  border-left: 3px solid rgba(255, 255, 255, 0.5);
+  clip-path: polygon(100% 0, 0 0, 100% 100%);
+}
+.pcbox__head {
+  position: relative;
+  z-index: 1;
+  margin: calc(-1 * var(--s-6)) calc(-1 * var(--s-6)) var(--s-5);
+  padding: 20px 120px 16px var(--s-6);
+}
+.pcbox__title {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono, monospace);
+  font-weight: 800;
+  font-size: 1.3rem;
+  letter-spacing: 0.02em;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+/* duas colunas — a da direita desce um pouco (`--offset`) pra ficar torta,
+   como no ícone de referência, em vez de um grid certinho. */
+.pcbox__grid {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-4);
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: var(--r-3);
+  padding: var(--s-4);
+}
+.pcbox__col {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+.pcbox__col--offset { margin-top: 54px; }
+@media (max-width: 360px) {
+  .pcbox__grid { flex-direction: column; }
+  .pcbox__col--offset { margin-top: 0; }
+}
+
+/* ---------- espaço vazio ---------- */
+.slot {
+  position: relative;
+  min-height: 190px;
+  border-radius: var(--r-3);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+.slot--empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 2.5px dashed rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
+  font: inherit;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.slot--empty:hover { background: rgba(255, 255, 255, 0.16); border-color: #fff; }
+.slot__plus { font-size: 2rem; font-weight: 300; line-height: 1; }
+.slot__label {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ---------- espaço preenchido ---------- */
+.slot--filled {
+  border-top: 4px solid var(--tcol);
+  overflow: hidden;
+}
+.slot__remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--ink-soft);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.slot__remove:hover { background: var(--red); color: #fff; }
+.slot__main {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 10px 12px;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: center;
+}
+.slot__sprite { width: 80px; height: 80px; object-fit: contain; }
+.slot__name { font-weight: 800; font-size: 1rem; }
+.slot__typerow { display: flex; gap: 4px; }
+.slot__typerow .tsym { width: 18px; height: 18px; border-radius: 4px; }
+.slot__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+  width: 100%;
+  font-size: 0.76rem;
+  color: var(--ink-soft);
+  overflow: hidden;
+}
+.slot__metarow { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slot__metarow b { color: var(--ink-faint); font-weight: 700; }
+
+/* ---------- editor de espaço (modal) ---------- */
+.slotEdit, .pk {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s-4);
+}
+.slotEdit { z-index: 300; }
+.pk { z-index: 310; }
+.slotEdit__backdrop, .pk__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 8, 14, 0.6);
+}
+.slotEdit__card {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  max-height: 88vh;
+  overflow-y: auto;
+  background: var(--surface);
+  border-radius: var(--r-3);
+  box-shadow: var(--shadow-3);
+}
+.slotEdit__head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.slotEdit__sprite { width: 52px; height: 52px; object-fit: contain; flex: none; }
+.slotEdit__titlewrap { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.slotEdit__name { font-size: 1.05rem; font-weight: 900; }
+.slotEdit__types { display: flex; gap: 4px; }
+.slotEdit__types .tsym { width: 16px; height: 16px; border-radius: 4px; }
+.slotEdit__fav {
+  flex: none;
+  width: 34px; height: 34px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--ink-faint);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.slotEdit__fav:hover { border-color: var(--gold); color: var(--gold); }
+.slotEdit__fav.is-fav {
+  border-color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 18%, var(--surface-2));
+  color: var(--gold);
+}
+.slotEdit__fav--sm { width: 30px; height: 30px; font-size: 0.95rem; }
+.slotEdit__swap {
+  flex: none;
+  border: 2px solid var(--border-strong);
+  background: var(--surface-2);
+  color: var(--ink-soft);
+  border-radius: var(--r-pill);
+  padding: 6px 12px;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.78rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.slotEdit__swap:hover { border-color: var(--lens); color: var(--lens); }
+.slotEdit__close {
+  flex: none;
+  width: 30px; height: 30px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--ink-soft);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+.slotEdit__close:hover { background: var(--red); color: #fff; }
+
+.slotEdit__body { padding: var(--s-4); display: flex; flex-direction: column; gap: var(--s-4); }
+.slotEdit__sec { display: flex; flex-direction: column; gap: 8px; }
+.slotEdit__sechead {
+  margin: 0;
+  font-family: var(--font-mono, monospace);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: var(--ink-faint);
+}
+
+.slotEdit__itemrow { display: flex; align-items: center; gap: 8px; }
+.slotEdit__itembtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  border: 2px solid var(--border-strong);
+  background: var(--surface-2);
+  color: var(--ink);
+  border-radius: var(--r-pill);
+  padding: 8px 16px;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+.slotEdit__itembtn:hover { border-color: var(--lens); }
+.slotEdit__itembtn img { width: 22px; height: 22px; object-fit: contain; }
+.slotEdit__itemplaceholder { color: var(--ink-faint); }
+.slotEdit__itembtn:disabled {
+  cursor: default;
+  opacity: 0.9;
+  border-color: color-mix(in srgb, var(--gold) 55%, var(--border-strong));
+  background: color-mix(in srgb, var(--gold) 12%, var(--surface-2));
+}
+.slotEdit__itemdesc {
+  margin: 0;
+  max-width: 100%;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+.slotEdit__itemdesc:empty { display: none; }
+
+.slotEdit__natsel {
+  align-self: flex-start;
+  border: 2px solid var(--border-strong);
+  background: var(--surface-2);
+  color: var(--ink);
+  border-radius: var(--r-pill);
+  padding: 8px 16px;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.88rem;
+  max-width: 100%;
+}
+.slotEdit__nathint { font-size: 0.78rem; font-weight: 700; color: var(--ink-faint); }
+
+.slotEdit__budget {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.slotEdit__budget.is-full { color: var(--red); }
+.slotEdit__stats { display: flex; flex-direction: column; gap: 6px; }
+.slotEdit__statrow {
+  display: grid;
+  grid-template-columns: 52px 40px 1fr 52px;
+  align-items: center;
+  gap: var(--s-3);
+}
+.slotEdit__statname { font-weight: 800; font-size: 0.82rem; }
+.slotEdit__base {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.8rem;
+  color: var(--ink-faint);
+  text-align: center;
+}
+.slotEdit__evinput {
+  width: 100%;
+  border: 2px solid var(--border-strong);
+  border-radius: var(--r-2);
+  padding: 6px 10px;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.88rem;
+  background: var(--surface-2);
+  color: var(--ink);
+}
+.slotEdit__evinput:focus { border-color: var(--lens); outline: none; background: var(--surface); }
+.slotEdit__finalval {
+  font-family: var(--font-mono, monospace);
+  font-weight: 900;
+  font-size: 0.95rem;
+  text-align: right;
+  color: var(--lens);
+  font-variant-numeric: tabular-nums;
+}
+.slotEdit__note { margin: 0; font-size: 0.76rem; color: var(--ink-faint); }
+
+/* ---------- seletor genérico (Pokémon / item) ---------- */
+.pk__card {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  max-height: 74vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-radius: var(--r-3);
+  box-shadow: var(--shadow-3);
+  overflow: hidden;
+}
+.pk__head { display: flex; align-items: center; justify-content: space-between; padding: var(--s-3) var(--s-4) 0; }
+.pk__title { margin: 0; font-size: 1rem; font-weight: 900; }
+.pk__close {
+  width: 30px; height: 30px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--ink-soft);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+.pk__close:hover { background: var(--red); color: #fff; }
+.pk__search {
+  margin: var(--s-3) var(--s-4) 0;
+  border: 2px solid var(--border-strong);
+  border-radius: var(--r-pill);
+  padding: 9px 16px;
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.9rem;
+  background: var(--surface-2);
+  color: var(--ink);
+}
+.pk__search:focus { border-color: var(--lens); outline: none; background: var(--surface); }
+.pk__list {
+  margin-top: var(--s-2);
+  padding: 4px var(--s-2) var(--s-3);
+  overflow-y: auto;
+}
+.pk__row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  background: none;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: var(--r-2);
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--ink);
+  cursor: pointer;
+  border-left: 3px solid transparent;
+}
+.pk__row:hover { background: var(--surface-2); border-left-color: var(--tcol, var(--lens)); }
+.pk__row--none { color: var(--ink-faint); }
+.pk__sprite { width: 34px; height: 34px; object-fit: contain; flex: none; }
+.pk__itemimg { width: 26px; height: 26px; object-fit: contain; flex: none; }
+.pk__noneico { width: 26px; text-align: center; flex: none; }
+.pk__rowname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pk__rownum { font-family: var(--font-mono, monospace); font-size: 0.78rem; color: var(--ink-faint); flex: none; }
+.pk__rowtypes { display: flex; gap: 3px; flex: none; }
+.pk__rowtypes .tsym { width: 15px; height: 15px; border-radius: 4px; }
+.pk__rowtext { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+.pk__rowwhy {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--ink-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pk__row--rec { border-left-color: color-mix(in srgb, var(--gold) 55%, transparent); }
+.pk__recbadge {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--gold) 22%, var(--surface-2));
+  color: var(--gold);
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+.pk__empty { padding: 14px 10px; color: var(--ink-soft); font-weight: 600; }
+.pk__group {
+  margin: 4px 10px 2px;
+  font-family: var(--font-mono, monospace);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--ink-faint);
+}
+
+@media (max-width: 560px) {
+  .teamz__top { padding: var(--s-3) var(--s-4); }
+  .teamz__body { padding: var(--s-4) var(--s-3); }
+  .pcbox { padding: var(--s-3); }
+  .pcbox__fold { width: 52px; height: 52px; }
+  .pcbox__head { margin: calc(-1 * var(--s-3)) calc(-1 * var(--s-3)) var(--s-3); padding: 12px 62px 10px var(--s-3); }
+  .pcbox__title { font-size: 0.92rem; }
+  .pcbox__col--offset { margin-top: 30px; }
+  .slot { min-height: 160px; }
+  .slot__sprite { width: 68px; height: 68px; }
+}

@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Checkdex</title>
+    <script>
+      // aplica o tema salvo antes da 1ª pintura (evita flash)
+      try {
+        if (localStorage.getItem("checkdex:theme") === "light") {
+          document.documentElement.setAttribute("data-theme", "light");
+        }
+      } catch (e) {}
+    </script>
+    <meta name="description" content="Pokédex para marcar Pokémon capturados e pesquisar evolução, locais e builds por jogo e geração." />
+    <link rel="icon" href="assets/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,700&display=swap" />
+    <link rel="stylesheet" href="src/styles/tokens.css" />
+    <link rel="stylesheet" href="src/styles/layout.css" />
+    <link rel="stylesheet" href="src/styles/components.css" />
+    <link rel="stylesheet" href="src/styles/theme-kanto.css" />
+    <link rel="stylesheet" href="src/styles/teamBuilder.css" />
+  </head>
+  <body>
+    <div class="topbar">
+      <header class="masthead">
+        <div class="masthead__inner">
+          <a class="brand" href="?">
+            <svg class="brand__ball" viewBox="0 0 100 100" aria-hidden="true">
+              <defs><clipPath id="pb"><circle cx="50" cy="50" r="42"/></clipPath></defs>
+              <circle cx="50" cy="50" r="49" fill="#fff" />
+              <circle cx="50" cy="50" r="45.5" fill="#1a1a1f" />
+              <g clip-path="url(#pb)">
+                <rect x="0" y="0" width="100" height="50" fill="#ee1c25" />
+                <rect x="0" y="50" width="100" height="50" fill="#fff" />
+                <rect x="0" y="43.5" width="100" height="13" fill="#1a1a1f" />
+              </g>
+              <circle cx="50" cy="50" r="16.5" fill="#1a1a1f" />
+              <circle cx="50" cy="50" r="10" fill="#fff" />
+              <circle cx="50" cy="50" r="4.2" fill="#1a1a1f" />
+            </svg>
+            <span class="brand__name">Checkdex</span>
+          </a>
+          <div class="tallies">
+            <div class="tally" data-role="counter">
+              <span class="tally__nums">
+                <b data-role="counter-caught">0</b><span data-role="counter-total">0</span>
+              </span>
+              <span class="tally__meter" aria-hidden="true"><i data-role="counter-fill" style="width:0%"></i></span>
+              <span class="tally__word">capturados <span data-role="subtitle">— todas as gerações</span></span>
+            </div>
+            <div class="minicount minicount--mega" data-role="counter-mega" title="Mega Evoluções marcadas">
+              <span class="minicount__ico" aria-hidden="true"></span>
+              <b data-role="mega-count">0</b><span data-role="mega-total">0</span>
+              <span class="minicount__word">megas</span>
+            </div>
+            <div class="minicount minicount--shiny" data-role="counter-shiny" title="Shinies marcados">
+              <span class="minicount__ico" aria-hidden="true"></span>
+              <b data-role="shiny-count">0</b><span data-role="shiny-total">0</span>
+              <span class="minicount__word">shinies</span>
+            </div>
+            <div class="minicount minicount--reg" data-role="counter-reg" title="Formas regionais marcadas">
+              <span class="minicount__ico" aria-hidden="true">◈</span>
+              <b data-role="reg-count">0</b><span data-role="reg-total">0</span>
+              <span class="minicount__word">regionais</span>
+            </div>
+          </div>
+          <button type="button" class="teams-nav" data-role="teams-nav" title="Montar times de batalha">
+            <svg class="teams-nav__ico" viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="3" width="7.5" height="7.5" rx="2" />
+              <rect x="13.5" y="3" width="7.5" height="7.5" rx="2" />
+              <rect x="3" y="13.5" width="7.5" height="7.5" rx="2" />
+              <rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2" />
+            </svg>
+            <span>Times</span>
+          </button>
+          <button type="button" class="theme-toggle" data-role="theme-toggle" aria-label="Alternar tema claro e escuro" title="Alternar tema claro / escuro">
+            <!-- modo escuro: Solrock → clica pra ir ao modo claro -->
+            <span class="theme-toggle__ico theme-toggle__sun" aria-hidden="true"></span>
+            <!-- modo claro: Lunatone → clica pra ir ao modo escuro -->
+            <span class="theme-toggle__ico theme-toggle__moon" aria-hidden="true"></span>
+          </button>
+        </div>
+      </header>
+
+      <div class="controls">
+        <div class="searchbar">
+          <div class="search">
+            <svg class="search__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4a6 6 0 104.47 10.03l4.75 4.75 1.41-1.41-4.75-4.75A6 6 0 0010 4zm0 2a4 4 0 110 8 4 4 0 010-8z"/></svg>
+            <input type="search" data-role="search" placeholder="Buscar Pokémon por nome ou número" autocomplete="off" spellcheck="false" aria-label="Buscar Pokémon" />
+            <button type="button" class="search__clear" data-role="search-clear" aria-label="Limpar busca" hidden>&times;</button>
+          </div>
+          <button type="button" class="shiny-toggle" data-role="shiny-toggle" aria-pressed="false" aria-label="Mostrar formas shiny" title="Formas shiny">
+            <span class="shiny-toggle__spark" aria-hidden="true"></span>
+            <span class="shiny-toggle__label">Shiny</span>
+          </button>
+        </div>
+
+        <div class="filters">
+          <div class="scroller">
+            <nav class="chips" data-role="gen-tabs" aria-label="Gerações"></nav>
+          </div>
+          <div class="filters__row">
+            <div class="filters__type" data-role="type-picker"></div>
+            <div class="filters__trait" data-role="trait-picker"></div>
+            <button type="button" class="caught-toggle" data-role="caught-toggle" aria-pressed="false" title="Mostrar só os marcados">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.2 4.8 11.4l1.4-1.4 3.4 3.4 8-8L21 6.8z"/></svg>
+              <span>Marcados</span>
+            </button>
+            <div class="scroller" data-role="game-scroller" hidden>
+              <nav class="chips" data-role="game-tabs" aria-label="Jogos"></nav>
+            </div>
+            <div class="locpicks" data-role="loc-pickers"></div>
+          </div> 
+        </div>
+      </div>
+    </div>
+
+    <div class="dexhead" data-role="dexhead" hidden>
+      <div class="dexhead__info">
+        <strong data-role="dexhead-title"></strong>
+        <span data-role="dexhead-sub"></span>
+      </div>
+    </div>
+
+    <main class="dex" data-role="dex" aria-live="polite"></main>
+
+    <div class="empty-state" data-role="empty" hidden>
+      <span class="empty-state__mark" aria-hidden="true"></span>
+      <p class="empty-state__title" data-role="empty-title">Nada por aqui</p>
+      <p data-role="empty-text">Nenhum Pokémon corresponde a esses filtros.</p>
+      <button type="button" class="btn" data-role="reset-filters">Limpar filtros</button>
+    </div>
+
+
+    <div data-role="teams-root"></div>
+
+    <button type="button" class="to-top" data-role="to-top" aria-label="Voltar ao topo">
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <defs><clipPath id="tt"><circle cx="50" cy="50" r="44"/></clipPath></defs>
+        <circle cx="50" cy="50" r="46" class="to-top__ring" />
+        <g clip-path="url(#tt)">
+          <rect x="0" y="0" width="100" height="50" class="to-top__lid" />
+          <rect x="0" y="50" width="100" height="50" class="to-top__base" />
+          <rect x="0" y="44" width="100" height="12" class="to-top__band" />
+        </g>
+        <path class="to-top__arrow" d="M32 55 50 37 68 55" />
+      </svg>
+    </button>
+
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>
