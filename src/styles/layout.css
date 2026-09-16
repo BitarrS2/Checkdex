@@ -167,21 +167,26 @@
   transition: grid-template-rows 0.28s ease, opacity 0.28s ease;
   opacity: 1;
 }
+/* overflow só fica "hidden" enquanto recolhido — os painéis de "Tipos" e
+   "Filtros" (dropdowns) precisam renderizar PRA FORA da caixa de ".filters"
+   quando abertos; deixar "overflow: hidden" o tempo todo aqui cortava
+   esses painéis (pareciam não abrir). O atraso na transição garante que
+   ele já esteja escondido no instante em que a caixa começa a encolher, e
+   só volte a "visible" depois que a caixa termina de crescer de novo. */
 .filters-collapse > .filters {
-  overflow: hidden;
   min-height: 0;
+  overflow: visible;
   visibility: visible;
-  transition: visibility 0s 0s;
+  transition: overflow 0s 0.28s, visibility 0s 0.28s;
 }
 .controls.is-collapsed .filters-collapse {
   grid-template-rows: 0fr;
   opacity: 0;
 }
-/* some do foco por teclado só depois do conteúdo terminar de sumir — senão
-   dá pra tabular pra dentro de filtros invisíveis enquanto recolhidos */
 .controls.is-collapsed .filters-collapse > .filters {
+  overflow: hidden;
   visibility: hidden;
-  transition: visibility 0s 0.28s;
+  transition: overflow 0s 0s, visibility 0s 0s;
 }
 .controls.is-collapsed { gap: 0; padding-bottom: calc(var(--s-3) - 2px); }
 
@@ -205,8 +210,10 @@
   box-shadow: var(--shadow-2);
 }
 .controls-toggle:hover { color: var(--ink); border-color: var(--ink-faint); }
-.controls-toggle svg { width: 14px; height: 14px; transition: transform 0.25s ease; flex: none; }
-.controls.is-collapsed .controls-toggle svg { transform: rotate(180deg); }
+/* seta aponta pra baixo (recolhido = "toque pra mostrar") e vira pra cima
+   quando os filtros estão abertos ("toque pra esconder") */
+.controls-toggle svg { width: 14px; height: 14px; transition: transform 0.25s ease; flex: none; transform: rotate(180deg); }
+.controls.is-collapsed .controls-toggle svg { transform: rotate(0deg); }
 
 /* min-width:0 é necessário aqui (não só na linha de dentro) — sem ele, o
    conteúdo largo de um filtro ativo (ex.: "Tipos" com chips) empurra esse

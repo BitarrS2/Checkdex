@@ -100,10 +100,16 @@ export function createBackupMenu() {
     status,
   );
 
-  // fundo escurecido — só aparece (via CSS) quando o painel vira modal centralizado no celular
-  const backdrop = el("div", { class: "backup__backdrop", hidden: true, onclick: () => toggle(false) });
+  // fundo escurecido — no celular ele também centraliza o painel (via flexbox,
+  // mais confiável que "fixed + inset + margin:auto" nos navegadores móveis);
+  // no desktop fica sem estilo, então o painel continua ancorado no botão.
+  // só fecha se o toque foi no fundo em si (não borbulhado de dentro do painel).
+  const backdrop = el("div", {
+    class: "backup__backdrop", hidden: true,
+    onclick: (e) => { if (e.target === backdrop) toggle(false); },
+  }, panel);
 
-  const root = el("div", { class: "backup" }, btn, backdrop, panel);
+  const root = el("div", { class: "backup" }, btn, backdrop);
 
   function toggle(force) {
     open = force ?? !open;

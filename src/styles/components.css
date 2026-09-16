@@ -1967,27 +1967,31 @@
 .backup__status { margin: 0; font-size: 0.82rem; font-weight: 700; color: var(--caught); }
 .backup__status--error { color: var(--red); }
 
-.backup__backdrop { display: none; }
+/* no desktop o fundo não tem estilo nenhum — o painel (dentro dele) continua
+   se ancorando normalmente no ".backup" (posicionado), ignorando esse div. */
+.backup__backdrop { background: none; }
 
 @media (max-width: 560px) {
-  /* no celular o painel vira modal centralizado (não um dropdown anexado ao
-     botão) — precisa de altura máxima + rolagem própria, senão conteúdo
-     mais alto que a tela fica cortado e inacessível (sem como rolar até
-     ele), e um fundo escurecido pra não parecer um cartão solto por cima
-     da lista de Pokémon. */
+  /* no celular o painel vira modal centralizado — centralizar com flexbox
+     (em vez de "fixed + inset + margin:auto") evita as inconsistências da
+     barra de endereço dinâmica dos navegadores móveis. Precisa de altura
+     máxima + rolagem própria, senão conteúdo mais alto que a tela fica
+     cortado e inacessível (sem como rolar até ele). O fundo escurecido
+     evita que o painel pareça um cartão solto por cima da lista. */
   .backup__backdrop {
-    display: block;
     position: fixed;
     inset: 0;
     z-index: 49;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
     background: rgba(10, 10, 16, 0.55);
   }
   .backup .backup__panel {
-    position: fixed;
-    inset: 0;
+    position: static;
     z-index: 50;
-    margin: auto;
-    width: calc(100vw - 32px);
+    width: 100%;
     max-width: 400px;
     max-height: min(80vh, 560px);
     overflow-y: auto;
