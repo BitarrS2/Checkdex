@@ -324,6 +324,11 @@
   -webkit-mask: url("../../assets/icons/geodude.png") center / contain no-repeat;
           mask: url("../../assets/icons/geodude.png") center / contain no-repeat;
 }
+.dex__section-icon--horde {
+  width: 26px;
+  -webkit-mask: url("../../assets/icons/horda.png") center / contain no-repeat;
+          mask: url("../../assets/icons/horda.png") center / contain no-repeat;
+}
 
 /* ---------- estado vazio ---------- */
 .empty-state {

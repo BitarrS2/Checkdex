@@ -358,17 +358,19 @@ function render() {
   };
 
   if (locKey) {
-    // modo local: separa quem só aparece pescando, surfando ou quebrando pedra dos demais
+    // modo local: separa quem só aparece pescando, surfando, quebrando pedra ou em horda dos demais
     const normal = [];
     const fishing = [];
     const surfing = [];
     const rockSmash = [];
+    const horde = [];
     for (const p of list) {
       const entries = hereEntries(game, locKey, p.id);
       const labels = entries.length ? entries.map((e) => methodInfo(e.method).label) : [];
       if (labels.length && labels.every((l) => l === "Pescando")) fishing.push({ p, entries });
       else if (labels.length && labels.every((l) => l === "Surfando")) surfing.push({ p, entries });
       else if (labels.length && labels.every((l) => l === "Quebra-pedra")) rockSmash.push({ p, entries });
+      else if (labels.length && labels.every((l) => l === "Horda")) horde.push({ p, entries });
       else normal.push({ p, entries });
     }
     const section = (iconClass, label, group) => {
@@ -385,6 +387,7 @@ function render() {
     section("dex__section-icon--fish", "Pesca", fishing);
     section("dex__section-icon--surf", "Surf", surfing);
     section("dex__section-icon--rock", "Quebra-pedra", rockSmash);
+    section("dex__section-icon--horde", "Horda", horde);
   } else {
     for (const p of list) frag.append(makeCard(p, null));
   }

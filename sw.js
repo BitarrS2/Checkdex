@@ -14,7 +14,7 @@
 // abaixo), sem perguntar nada; a página recarrega na hora (ver updateToast.js). Sem bumpar,
 // num PWA instalado (que só retoma a aba em vez de recarregar do zero), o
 // stale-while-revalidate pode levar várias reaberturas pra refletir a mudança.
-const SHELL_VERSION = "v3";
+const SHELL_VERSION = "v4";
 const SHELL_CACHE = `checkdex-shell-${SHELL_VERSION}`;
 const IMAGE_CACHE = "checkdex-images";
 const FONT_CACHE = "checkdex-fonts";
@@ -81,6 +81,7 @@ const SHELL_URLS = [
   "./assets/icons/icon-maskable-512.png",
   "./assets/icons/apple-touch-icon.png",
   "./assets/icons/geodude.png",
+  "./assets/icons/horda.png",
   "./assets/icons/lapras.png",
   "./assets/icons/lunatone.png",
   "./assets/icons/magikarp.png",
