@@ -10,10 +10,11 @@
 // Bump SHELL_VERSION sempre que a LISTA de arquivos do shell mudar (arquivo novo/removido)
 // E TAMBÉM sempre que quiser que uma atualização de conteúdo chegue logo em quem já tem o
 // app instalado: mudar esse número muda os bytes do sw.js, o que é o único jeito do navegador
-// perceber "tem uma versão nova" e mostrar o aviso de atualizar — sem isso, num PWA instalado
-// (que só retoma a aba em vez de recarregar do zero), o stale-while-revalidate pode levar
-// várias reaberturas pra refletir a mudança.
-const SHELL_VERSION = "v2";
+// perceber "tem uma versão nova" — o SW novo instala e assume sozinho (skipWaiting logo
+// abaixo), sem perguntar nada; a página recarrega na hora (ver updateToast.js). Sem bumpar,
+// num PWA instalado (que só retoma a aba em vez de recarregar do zero), o
+// stale-while-revalidate pode levar várias reaberturas pra refletir a mudança.
+const SHELL_VERSION = "v3";
 const SHELL_CACHE = `checkdex-shell-${SHELL_VERSION}`;
 const IMAGE_CACHE = "checkdex-images";
 const FONT_CACHE = "checkdex-fonts";
@@ -126,11 +127,12 @@ const LAZY_IMAGE_PREFIXES = [
 ];
 
 self.addEventListener("install", (event) => {
-  // não chama skipWaiting aqui de propósito: o SW novo fica "waiting" até o usuário
-  // confirmar a atualização (aviso mostrado pela página) — evita trocar o app debaixo
-  // do usuário no meio de uma sessão.
+  // assume o controle assim que terminar de instalar — sem aviso pro usuário,
+  // atualiza sozinho (a página recarrega no "controllerchange", ver updateToast.js)
   event.waitUntil(
-    caches.open(SHELL_CACHE).then((cache) => cache.addAll(SHELL_URLS)),
+    caches.open(SHELL_CACHE)
+      .then((cache) => cache.addAll(SHELL_URLS))
+      .then(() => self.skipWaiting()),
   );
 });
 
@@ -142,10 +144,6 @@ self.addEventListener("activate", (event) => {
       ))
       .then(() => self.clients.claim()),
   );
-});
-
-self.addEventListener("message", (event) => {
-  if (event.data === "skipWaiting") self.skipWaiting();
 });
 
 self.addEventListener("fetch", (event) => {
