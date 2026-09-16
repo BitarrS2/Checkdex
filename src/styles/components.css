@@ -1924,9 +1924,11 @@
 .backup-nav__ico { width: 18px; height: 18px; fill: #fff; flex: none; }
 
 .backup__panel {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
+  /* posição real (desktop) é escrita via JS (top/right inline, perto do
+     botão) — este top/right são só um fallback antes do 1º cálculo. */
+  position: fixed;
+  top: 64px;
+  right: 16px;
   z-index: 50;
   width: min(340px, 90vw);
   display: flex;
@@ -1937,6 +1939,7 @@
   border-radius: var(--r-3);
   box-shadow: var(--shadow-3);
   padding: 16px;
+  pointer-events: auto;
 }
 .backup__head { display: flex; align-items: flex-start; gap: 10px; }
 .backup__head-text { flex: 1; min-width: 0; }
@@ -1984,9 +1987,17 @@
 .backup__status { margin: 0; font-size: 0.82rem; font-weight: 700; color: var(--caught); }
 .backup__status--error { color: var(--red); }
 
-/* no desktop o fundo não tem estilo nenhum — o painel (dentro dele) continua
-   se ancorando normalmente no ".backup" (posicionado), ignorando esse div. */
-.backup__backdrop { background: none; }
+/* o fundo cobre a tela inteira em qualquer largura — precisa ser assim
+   (não só no celular) porque ele mora solto no <body>, fora do cabeçalho.
+   No desktop fica invisível e deixa clique atravessar (só o painel captura
+   clique) pra não bloquear o resto da página como um modal faria. */
+.backup__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 49;
+  background: none;
+  pointer-events: none;
+}
 
 @media (max-width: 560px) {
   /* no celular o painel vira modal centralizado — centralizar com flexbox
@@ -1994,20 +2005,18 @@
      barra de endereço dinâmica dos navegadores móveis. Precisa de altura
      máxima + rolagem própria, senão conteúdo mais alto que a tela fica
      cortado e inacessível (sem como rolar até ele). O fundo escurecido
-     evita que o painel pareça um cartão solto por cima da lista. */
+     evita que o painel pareça um cartão solto por cima da lista, e agora
+     bloqueia clique de novo (é um modal de verdade aqui). */
   .backup__backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 49;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 16px;
     background: rgba(10, 10, 16, 0.55);
+    pointer-events: auto;
   }
-  .backup .backup__panel {
+  .backup__panel {
     position: static;
-    z-index: 50;
     width: 100%;
     max-width: 400px;
     max-height: min(80vh, 560px);

@@ -106,16 +106,28 @@ export function createBackupMenu() {
     status,
   );
 
-  // fundo escurecido — no celular ele também centraliza o painel (via flexbox,
-  // mais confiável que "fixed + inset + margin:auto" nos navegadores móveis);
-  // no desktop fica sem estilo, então o painel continua ancorado no botão.
-  // só fecha se o toque foi no fundo em si (não borbulhado de dentro do painel).
+  // fundo escurecido — no celular ele também centraliza o painel (via flexbox);
+  // no desktop fica invisível e não bloqueia clique (só fecha o menu), e o
+  // painel se posiciona sozinho perto do botão via JS (ver positionDesktop).
+  // Fica solto no <body> (não dentro do cabeçalho) de propósito: o cabeçalho
+  // usa "backdrop-filter" no tema escuro, que cria um novo "containing
+  // block" pra "position: fixed" — o painel ficava preso ao tamanho do
+  // cabeçalho em vez de cobrir a tela inteira.
   const backdrop = el("div", {
     class: "backup__backdrop", hidden: true,
     onclick: (e) => { if (e.target === backdrop) toggle(false); },
   }, panel);
+  document.body.append(backdrop);
 
-  const root = el("div", { class: "backup" }, btn, backdrop);
+  const root = el("div", { class: "backup" }, btn);
+
+  const isDesktop = () => matchMedia("(min-width: 561px)").matches;
+  function positionDesktop() {
+    if (!isDesktop()) { panel.style.top = ""; panel.style.right = ""; return; }
+    const r = btn.getBoundingClientRect();
+    panel.style.top = Math.round(r.bottom + 8) + "px";
+    panel.style.right = Math.round(window.innerWidth - r.right) + "px";
+  }
 
   function toggle(force) {
     open = force ?? !open;
@@ -123,10 +135,11 @@ export function createBackupMenu() {
     backdrop.hidden = !open;
     btn.setAttribute("aria-expanded", String(open));
     root.classList.toggle("is-open", open);
-    if (open) { setStatus(""); updateSummary(); }
+    if (open) { setStatus(""); updateSummary(); positionDesktop(); }
   }
 
-  document.addEventListener("click", (e) => { if (open && !root.contains(e.target)) toggle(false); });
+  addEventListener("resize", () => { if (open) positionDesktop(); });
+  document.addEventListener("click", (e) => { if (open && !root.contains(e.target) && !backdrop.contains(e.target)) toggle(false); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && open) toggle(false); });
 
   return { el: root };
