@@ -18,20 +18,36 @@ export function shinyPath(url) {
   return url;
 }
 
+// Registro de todos os <img> de sprite já criados — não dá pra confiar em
+// document.querySelectorAll aqui, porque cards ficam em cache e são
+// desconectados/reconectados do DOM a cada re-render (troca de filtro/geração).
+// Um card fora do DOM no momento do toggle não seria pego pela query e voltaria
+// pra tela com o sprite do modo antigo (shiny aparecendo com o modo desligado).
+const registry = new Set();
+
 export function spriteImg(url, attrs = {}) {
   const shiny = shinyPath(url);
-  return el("img", {
+  const img = el("img", {
     ...attrs,
     src: isShiny() ? shiny : url,
     dataset: { ...(attrs.dataset || {}), spr: url, sprShiny: shiny },
   });
+  registry.add(img);
+  return img;
+}
+
+// Para <img> montadas fora do spriteImg() (ex.: um sprite reaproveitado que
+// troca de Pokémon no lugar) — registra pra também reagir ao toggle.
+export function registerSprite(img) {
+  registry.add(img);
+  return img;
 }
 
 subscribe((kind) => {
   if (kind !== "shiny") return;
   const on = isShiny();
   document.documentElement.classList.toggle("is-shiny", on);
-  for (const im of document.querySelectorAll("img[data-spr]")) {
+  for (const im of registry) {
     im.src = on ? im.dataset.sprShiny : im.dataset.spr;
   }
 });

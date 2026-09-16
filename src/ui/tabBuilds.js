@@ -3,7 +3,7 @@
 // Por padrão abre no estágio final da linha (a forma "campeã").
 
 import { el, clear } from "./dom.js";
-import { evolutionStages, megasFor, regionalsFor, loadBuildsData, gameNameParts, store } from "../data.js";
+import { evolutionStages, megasFor, regionalsFor, altFormsFor, loadBuildsData, gameNameParts, store } from "../data.js";
 import { getFilters } from "../state.js";
 import { spriteImg } from "./sprite.js";
 import { typeSymbol } from "./types.js";
@@ -40,12 +40,16 @@ function mount(wrap, pokemon) {
   for (const f of regionalsFor(pokemon)) {
     if (f.stats) entries.push({ id: f.key, baseId: f.speciesId, name: f.name, regKey: f.key, reg: f.region, types: f.types, stats: f.stats, sprite: f.sprite });
   }
+  for (const f of altFormsFor(pokemon)) {
+    const key = f.setKey || f.key;
+    if (f.stats) entries.push({ id: key, baseId: f.siblingId, name: f.name, altKey: key, types: f.types, stats: f.stats, sprite: f.sprite });
+  }
   for (const m of megasFor(pokemon)) {
     if (m.stats) entries.push({ id: m.key, baseId: pokemon.id, baseSlug: m.key.split("-mega")[0], name: m.name, mega: true, stone: m.stone, megaAbility: m.ability || null, types: m.types, stats: m.stats, sprite: m.sprite });
   }
 
   // abre no estágio final da linha (forma "campeã")
-  const finalCanon = [...entries].reverse().find((e) => !e.mega && !e.regKey);
+  const finalCanon = [...entries].reverse().find((e) => !e.mega && !e.regKey && !e.altKey);
   const start = finalCanon || entries[entries.length - 1] || entries[0];
 
   const games = store.games;
@@ -76,7 +80,7 @@ function mount(wrap, pokemon) {
         onclick: () => { state.sel = e.id; state.setIdx = 0; state.itemPick = 0; sync(); },
       }, spriteImg(e.sprite, { alt: "" }), el("span", { class: "seg__label" }, e.name)));
     }
-    const l = ["Pokémon", entries.some((e) => e.reg) && "regional", entries.some((e) => e.mega) && "Mega"].filter(Boolean).join(" / ");
+    const l = ["Pokémon", entries.some((e) => e.reg) && "regional", entries.some((e) => e.altKey) && "forma alt.", entries.some((e) => e.mega) && "Mega"].filter(Boolean).join(" / ");
     ctrl.append(field(l, seg));
   }
 

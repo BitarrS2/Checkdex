@@ -101,6 +101,8 @@ a { color: var(--lens); text-underline-offset: 2px; }
 
 button { font-family: inherit; color: inherit; }
 
+button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+
 :focus-visible {
   outline: 3px solid var(--lens);
   outline-offset: 2px;

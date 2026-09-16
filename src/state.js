@@ -5,6 +5,7 @@ const CAUGHT_KEY = "checkdex.caught";
 const SHINY_KEY = "checkdex.shinycaught";
 const MEGA_KEY = "checkdex.megas";
 const REGIONAL_KEY = "checkdex.regionals";
+const ALTFORM_KEY = "checkdex.altforms";
 const PREFS_KEY = "checkdex.prefs";
 
 function readJSON(key, fallback) {
@@ -30,6 +31,8 @@ const caughtShiny = new Set(readJSON(SHINY_KEY, []).map(Number));
 const megaCaught = new Set(readJSON(MEGA_KEY, []));
 // Formas regionais marcadas — contagem própria.
 const regionalCaught = new Set(readJSON(REGIONAL_KEY, []));
+// Formas alternativas pós-evolução marcadas (Lycanroc Midnight/Dusk…) — separado.
+const altCaught = new Set(readJSON(ALTFORM_KEY, []));
 const prefs = Object.assign(
   { gen: "all", game: "all", types: [], traits: [], shiny: false, onlyCaught: false },
   readJSON(PREFS_KEY, {}),
@@ -113,6 +116,19 @@ export function regionalCaughtCount() {
   return regionalCaught.size;
 }
 
+/* ---- formas alternativas pós-evolução marcadas (separado) ---- */
+export function isAltCaught(key) {
+  return altCaught.has(key);
+}
+export function toggleAltCaught(key) {
+  altCaught.has(key) ? altCaught.delete(key) : altCaught.add(key);
+  writeJSON(ALTFORM_KEY, [...altCaught]);
+  emit("mega");
+}
+export function altCaughtCount() {
+  return altCaught.size;
+}
+
 /* ---- modo shiny (só troca os sprites; não é filtro) ---- */
 export function isShiny() {
   return !!prefs.shiny;
@@ -130,5 +146,53 @@ export function getFilters() {
 export function setFilter(patch) {
   Object.assign(prefs, patch);
   persistPrefs();
+  emit("filter");
+}
+
+/* ---- exportar / importar (backup em arquivo) ---- */
+export function exportState() {
+  return {
+    caught: [...caught],
+    shiny: [...caughtShiny],
+    megas: [...megaCaught],
+    regionals: [...regionalCaught],
+    altforms: [...altCaught],
+    prefs: { ...prefs },
+  };
+}
+
+export function importState(data) {
+  if (!data || typeof data !== "object") return;
+  const nums = (v) => (Array.isArray(v) ? v.map(Number).filter((n) => Number.isFinite(n)) : []);
+  const strs = (v) => (Array.isArray(v) ? v.filter((s) => typeof s === "string") : []);
+
+  caught.clear();
+  nums(data.caught).forEach((id) => caught.add(id));
+  caughtShiny.clear();
+  nums(data.shiny).forEach((id) => caughtShiny.add(id));
+  megaCaught.clear();
+  strs(data.megas).forEach((k) => megaCaught.add(k));
+  regionalCaught.clear();
+  strs(data.regionals).forEach((k) => regionalCaught.add(k));
+  altCaught.clear();
+  strs(data.altforms).forEach((k) => altCaught.add(k));
+
+  if (data.prefs && typeof data.prefs === "object") {
+    const base = { gen: "all", game: "all", types: [], traits: [], shiny: false, onlyCaught: false };
+    Object.assign(prefs, base, data.prefs);
+    if (!Array.isArray(prefs.types)) prefs.types = [];
+    if (!Array.isArray(prefs.traits)) prefs.traits = [];
+  }
+
+  persistCaught();
+  writeJSON(SHINY_KEY, [...caughtShiny]);
+  writeJSON(MEGA_KEY, [...megaCaught]);
+  writeJSON(REGIONAL_KEY, [...regionalCaught]);
+  writeJSON(ALTFORM_KEY, [...altCaught]);
+  persistPrefs();
+
+  emit("caught");
+  emit("mega");
+  emit("shiny");
   emit("filter");
 }

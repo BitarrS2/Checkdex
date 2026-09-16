@@ -68,6 +68,11 @@ na árvore de evolução (com o método na seta e a região no card), 4 contador
 (capturados · Megas · shinies · regionais), deep-links
 (`?gen=&game=&type=&trait=&caught=&loc=&q=&sel=&tab=`).
 
-**Próximo:** Fase 3 (builds/itens) e Fase 4 (exportar/importar progresso, dark mode, PWA).
+**Fase 4 (parcial):** app instalável (PWA) com service worker — HTML/CSS/JS/JSON de dados ficam
+disponíveis offline desde a primeira visita; os sprites/artes ficam disponíveis offline conforme
+o usuário visita cada Pokémon (baixar tudo de uma vez passaria de 300 MB). Aviso de nova versão
+disponível quando o app é atualizado. Exportar/importar progresso e dark mode já feitos.
+
+**Próximo:** Fase 3 (builds/itens).
 
 Dados: [PokéAPI](https://pokeapi.co). Símbolos de tipo (estilo Scarlet/Violet): [partywhale/pokemon-type-icons](https://github.com/partywhale/pokemon-type-icons) (MIT), em `assets/types/` — círculo de fundo removido e viewBox reenquadrado no glifo. Ícone de Mega Evolução (`assets/mega-dna.png`). Progresso salvo apenas no navegador do usuário.

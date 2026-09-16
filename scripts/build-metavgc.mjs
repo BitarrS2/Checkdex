@@ -25,14 +25,17 @@ const slugName = (s) => (s || "").toString().toLowerCase()
 const ALIAS = {
   "tauros-paldea-aqua": "tauros-paldea-aqua-breed",
   "meowstic-mega": "meowstic-male-mega",
+  "meowstic-female": "meowstic-f",
 };
 
 // formas que o metavgc lista separado mas este projeto não modela como
 // entrada própria (gênero/appliance/estilo de combate sem entrada no dex) —
-// pular evita atribuir a build de uma forma pra outra mecanicamente diferente
+// pular evita atribuir a build de uma forma pra outra mecanicamente diferente.
+// (Lycanroc Midnight/Dusk, Toxtricity Low Key, Urshifu, Meowstic Female e
+// Polteageist Antique GANHARAM entrada própria em data/altforms.json — não
+// pulam mais, e casam via `altformKeys` abaixo.)
 const SKIP = new Set([
-  "meowstic-female", "indeedee-female", "basculegion-female",
-  "lycanroc-dusk", "lycanroc-midnight",
+  "indeedee-female", "basculegion-female",
   "rotom-frost", "rotom-heat", "rotom-mow", "rotom-wash", "rotomwashrotom",
   "aegislash-blade",
   "maushold-family-of-three",
@@ -77,9 +80,10 @@ function parse(slug, html) {
   return { slug, ability, items: items.slice(0, 3), moves: moves.slice(0, 4) };
 }
 
-const [megas, regionals, pokedex, movesData, abilitiesData, itemsData] = await Promise.all([
+const [megas, regionals, altforms, pokedex, movesData, abilitiesData, itemsData] = await Promise.all([
   readFile(path.join(DATA, "megas.json"), "utf8").then(JSON.parse),
   readFile(path.join(DATA, "regionals.json"), "utf8").then(JSON.parse),
+  readFile(path.join(DATA, "altforms.json"), "utf8").then(JSON.parse),
   readFile(path.join(DATA, "pokedex.json"), "utf8").then(JSON.parse),
   readFile(path.join(DATA, "moves.json"), "utf8").then(JSON.parse),
   readFile(path.join(DATA, "abilities.json"), "utf8").then(JSON.parse),
@@ -90,6 +94,11 @@ const megaByKey = new Map();
 for (const list of Object.values(megas)) for (const m of list) megaByKey.set(m.key, m);
 const regionalKeys = new Set();
 for (const list of Object.values(regionals)) for (const r of list) regionalKeys.add(r.key);
+// formas alternativas pós-evolução (Lycanroc Midnight/Dusk, Urshifu Rapid
+// Strike…) — casam pelo `setKey` (nome usado no Smogon/MetaVGC) quando
+// existir, senão pelo `key` (mesmo usado em data.js/tabBuilds.js).
+const altformKeys = new Set();
+for (const list of Object.values(altforms)) for (const f of list) altformKeys.add(f.setKey || f.key);
 const pokedexSlugs = new Set(pokedex.map((p) => slugName(p.name)));
 
 console.log(`buscando ${SLUGS.length} páginas do metavgc.com…`);
@@ -117,6 +126,7 @@ for (const p of raw) {
   let targetKey = null;
   if (megaByKey.has(key)) targetKey = key;
   else if (regionalKeys.has(key)) targetKey = key;
+  else if (altformKeys.has(key)) targetKey = key;
   else if (pokedexSlugs.has(key)) targetKey = key;
   if (!targetKey) { unmatched.push(p.slug); continue; }
 

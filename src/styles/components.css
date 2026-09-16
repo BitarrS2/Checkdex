@@ -943,6 +943,27 @@
   background: var(--caught-soft);
 }
 
+/* nó de forma alternativa pós-evolução (Lycanroc Midnight/Dusk, Toxtricity
+   Low Key, Urshifu Rapid Strike…) — mesma pegada do nó regional, cor própria
+   pra não confundir com forma regional de verdade. */
+.evo__node--alt {
+  --alt: #7a5cc4;
+  border-top: 3px solid var(--alt);
+}
+.evo__alttag {
+  position: absolute; top: 7px; left: 7px;
+  font-size: 0.54rem; font-weight: 900;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  color: #fff; background: var(--alt);
+  padding: 2px 7px;
+  border-radius: var(--r-pill);
+}
+.evo__node--alt.is-caught {
+  border-color: var(--caught);
+  border-top-color: var(--alt);
+  background: var(--caught-soft);
+}
+
 /* Pokémon que se está vendo, destacado dentro da árvore */
 .evo__node.is-focus {
   border-color: var(--accent);
@@ -1734,6 +1755,11 @@
   image-rendering: pixelated;
 }
 .builds__itemchip.is-active .builds__itemimg { width: 24px; height: 24px; }
+.builds__itemchip:disabled { cursor: default; }
+.builds__itemchip:disabled:hover { background: var(--surface-2); }
+.builds__itemchip.is-active:disabled:hover {
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+}
 
 .builds__moves {
   margin-top: var(--s-4);
@@ -1852,3 +1878,161 @@
   stroke-linejoin: round;
   filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35));
 }
+/* respeita a "ilha" do iPhone / gesto de navegação do Android */
+.to-top { bottom: calc(env(safe-area-inset-bottom, 0px) + clamp(14px, 3vw, 28px)); }
+
+/* ---------- scroll por toque ---------- */
+.scroller,
+.locpick__list,
+.gp__menu,
+.evo,
+.tabs,
+.tabctrl__field .seg {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ---------- telas com toque: campos e alvos maiores ---------- */
+@media (pointer: coarse) {
+  /* < 16px faz o Safari/iOS dar zoom ao focar o campo */
+  .locpick__search,
+  .enc select,
+  .builds__setsel {
+    font-size: 1rem;
+  }
+  .locpick__x { width: 24px; height: 24px; font-size: 1rem; }
+  .search__clear { width: 30px; height: 30px; }
+}
+
+/* ---------- backup: exportar / importar dados (masthead) ---------- */
+.backup { position: relative; flex: none; }
+
+.backup-nav {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px; height: 34px;
+  padding: 0;
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.backup-nav:hover,
+.backup.is-open .backup-nav { background: rgba(255, 255, 255, 0.24); border-color: rgba(255, 255, 255, 0.7); }
+.backup-nav__ico { width: 18px; height: 18px; fill: #fff; flex: none; }
+
+.backup__panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 50;
+  width: min(340px, 90vw);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-3);
+  box-shadow: var(--shadow-3);
+  padding: 16px;
+}
+.backup__head strong { display: block; font-size: 0.98rem; color: var(--ink); }
+.backup__head p { margin: 6px 0 0; font-size: 0.84rem; font-weight: 600; line-height: 1.4; color: var(--ink-soft); }
+.backup__summary {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ink-faint);
+  background: var(--surface-2);
+  border-radius: var(--r-2);
+  padding: 8px 10px;
+}
+.backup__actions { display: flex; flex-direction: column; gap: 8px; }
+.backup__btn {
+  border: 2px solid var(--border-strong);
+  background: var(--surface-2);
+  color: var(--ink);
+  padding: 9px 14px;
+  border-radius: var(--r-pill);
+  font: inherit;
+  font-weight: 800;
+  font-size: 0.86rem;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.backup__btn:hover { border-color: var(--ink-faint); }
+.backup__btn--export { background: var(--red); border-color: var(--red); color: #fff; }
+.backup__btn--export:hover { background: var(--red-deep); border-color: var(--red-deep); }
+.backup__status { margin: 0; font-size: 0.82rem; font-weight: 700; color: var(--caught); }
+.backup__status--error { color: var(--red); }
+
+.backup__backdrop { display: none; }
+
+@media (max-width: 560px) {
+  /* no celular o painel vira modal centralizado (não um dropdown anexado ao
+     botão) — precisa de altura máxima + rolagem própria, senão conteúdo
+     mais alto que a tela fica cortado e inacessível (sem como rolar até
+     ele), e um fundo escurecido pra não parecer um cartão solto por cima
+     da lista de Pokémon. */
+  .backup__backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 49;
+    background: rgba(10, 10, 16, 0.55);
+  }
+  .backup .backup__panel {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    margin: auto;
+    width: calc(100vw - 32px);
+    max-width: 400px;
+    max-height: min(80vh, 560px);
+    overflow-y: auto;
+  }
+}
+
+/* aviso de nova versão do app (service worker) pronta pra ativar */
+.update-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
+  transform: translateX(-50%);
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  max-width: calc(100vw - 32px);
+  padding: var(--s-3) var(--s-3) var(--s-3) var(--s-4);
+  background: var(--ink);
+  color: #fff;
+  border-radius: var(--r-3);
+  box-shadow: var(--shadow-3);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+.update-toast__btn {
+  flex: none;
+  border: none;
+  border-radius: var(--r-pill);
+  padding: 8px 16px;
+  background: var(--red);
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+.update-toast__btn:hover { background: var(--red-deep); }
+.update-toast__close {
+  flex: none;
+  border: none;
+  background: transparent;
+  color: #fff;
+  opacity: 0.7;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px;
+}
+.update-toast__close:hover { opacity: 1; }

@@ -259,7 +259,6 @@ body::before {
   display: grid;
   place-items: center;
   width: 34px; height: 34px;
-  margin-left: 6px;
   padding: 0;
   border: 1.5px solid rgba(255, 255, 255, 0.4);
   border-radius: 50%;

@@ -48,7 +48,9 @@ export function createLocationPicker({ onPick, label = "Locais", groupBy = "type
     if (open) {
       search.value = "";
       renderList();
-      requestAnimationFrame(() => search.focus());
+      // só foca (e abre o teclado) em quem tem ponteiro fino de verdade — em
+      // touch isso cobria o painel com o teclado assim que ele abria.
+      if (matchMedia("(pointer: fine)").matches) requestAnimationFrame(() => search.focus());
       listEl.querySelector(".locpick__row.is-current")?.scrollIntoView({ block: "center" });
     }
   }

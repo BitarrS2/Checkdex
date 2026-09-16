@@ -12,7 +12,11 @@ import { createLocationPicker } from "./ui/locationPicker.js";
 import { createTypePicker } from "./ui/typePicker.js";
 import { createTraitPicker } from "./ui/traitPicker.js";
 import { mountTeamBuilder } from "./ui/teamBuilder.js";
+import { createBackupMenu } from "./ui/backupMenu.js";
 import { method as methodInfo } from "./ui/encounterText.js";
+import { registerServiceWorker } from "./ui/updateToast.js";
+
+registerServiceWorker();
 
 const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"];
 const $ = (sel) => document.querySelector(sel);
@@ -53,6 +57,9 @@ const refs = {
   toTop: $('[data-role="to-top"]'),
   teamsRoot: $('[data-role="teams-root"]'),
   teamsNav: $('[data-role="teams-nav"]'),
+  backupRoot: $('[data-role="backup-root"]'),
+  controls: $('[data-role="controls"]'),
+  controlsToggle: $('[data-role="controls-toggle"]'),
 };
 
 const cardCache = new Map();
@@ -79,6 +86,7 @@ async function init() {
   buildShinyToggle();
   buildThemeToggle();
   buildToTop();
+  buildControlsToggle();
   refs.caughtToggle.addEventListener("click", () => {
     setFilter({ onlyCaught: !getFilters().onlyCaught });
   });
@@ -87,6 +95,8 @@ async function init() {
 
   const teamBuilder = mountTeamBuilder(refs.teamsRoot);
   refs.teamsNav.addEventListener("click", teamBuilder.open);
+
+  refs.backupRoot.replaceWith(createBackupMenu().el);
 
   refs.resetFilters.addEventListener("click", () => {
     // vazio por causa do "Marcados" → só volta pra Pokédex geral (mantém o resto)
@@ -240,6 +250,15 @@ function buildThemeToggle() {
   sync();
 }
 
+function buildControlsToggle() {
+  refs.controlsToggle.addEventListener("click", () => {
+    const collapsed = refs.controls.classList.toggle("is-collapsed");
+    refs.controlsToggle.setAttribute("aria-expanded", String(!collapsed));
+    refs.controlsToggle.title = collapsed ? "Mostrar filtros" : "Esconder filtros";
+    refs.controlsToggle.setAttribute("aria-label", collapsed ? "Mostrar filtros" : "Esconder filtros");
+  });
+}
+
 function buildShinyToggle() {
   const sync = () => {
     const on = isShiny();
@@ -339,15 +358,17 @@ function render() {
   };
 
   if (locKey) {
-    // modo local: separa quem só aparece pescando ou só surfando dos demais
+    // modo local: separa quem só aparece pescando, surfando ou quebrando pedra dos demais
     const normal = [];
     const fishing = [];
     const surfing = [];
+    const rockSmash = [];
     for (const p of list) {
       const entries = hereEntries(game, locKey, p.id);
       const labels = entries.length ? entries.map((e) => methodInfo(e.method).label) : [];
       if (labels.length && labels.every((l) => l === "Pescando")) fishing.push({ p, entries });
       else if (labels.length && labels.every((l) => l === "Surfando")) surfing.push({ p, entries });
+      else if (labels.length && labels.every((l) => l === "Quebra-pedra")) rockSmash.push({ p, entries });
       else normal.push({ p, entries });
     }
     const section = (iconClass, label, group) => {
@@ -363,6 +384,7 @@ function render() {
     for (const { p, entries } of normal) frag.append(makeCard(p, entries));
     section("dex__section-icon--fish", "Pesca", fishing);
     section("dex__section-icon--surf", "Surf", surfing);
+    section("dex__section-icon--rock", "Quebra-pedra", rockSmash);
   } else {
     for (const p of list) frag.append(makeCard(p, null));
   }

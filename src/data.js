@@ -17,8 +17,10 @@ export const store = {
   megaTotal: 0,     // nº total de formas Mega (denominador do contador)
   regionals: {},    // speciesId -> [ { key, name, region, sprite, types } ]
   regionalTotal: 0,
+  altforms: {},     // speciesId -> [ { key, name, tag, sprite, types, stats, match } ]
   moves: {},        // slug -> { n, t, c, p, a, d }
   movesets: {},     // pokemonId -> { moveSlug: geraçãoMínima }
+  movesetsForms: {}, // formKey (regional/forma alt) -> { moveSlug: geraçãoMínima } — só quando difere da espécie base
   abilities: {},    // slug -> { n, short }
   sets: {},         // slugName -> { gen: [ set do Smogon ] }
   items: {},        // slug -> { n, d }
@@ -98,12 +100,13 @@ const GAME_COLOR = {
 };
 
 export async function loadData() {
-  const [pokedex, chains, encounters, megas, regionals, evoItems, games, meta] = await Promise.all([
+  const [pokedex, chains, encounters, megas, regionals, altforms, evoItems, games, meta] = await Promise.all([
     json("pokedex.json"),
     json("evolution-chains.json"),
     json("encounters.json"),
     json("megas.json"),
     json("regionals.json"),
+    json("altforms.json"),
     json("evo-items.json"),
     json("games.json"),
     json("meta.json"),
@@ -116,6 +119,7 @@ export async function loadData() {
   store.megaTotal = Object.values(megas).reduce((n, arr) => n + arr.length, 0);
   store.regionals = regionals;
   store.regionalTotal = Object.values(regionals).reduce((n, arr) => n + arr.length, 0);
+  store.altforms = altforms;
   store.evoItems = new Set(evoItems);
   for (const g of games) g.color = GAME_COLOR[g.slug] || "#8b909c";
   store.games = games;
@@ -136,11 +140,12 @@ let _buildsPromise = null;
 export function loadBuildsData() {
   if (!_buildsPromise) {
     _buildsPromise = Promise.all([
-      json("moves.json"), json("movesets.json"), json("abilities.json"),
+      json("moves.json"), json("movesets.json"), json("movesets-forms.json"), json("abilities.json"),
       json("sets.json"), json("items.json"), json("metavgc.json"),
-    ]).then(([moves, movesets, abilities, sets, items, metavgc]) => {
+    ]).then(([moves, movesets, movesetsForms, abilities, sets, items, metavgc]) => {
       store.moves = moves;
       store.movesets = movesets;
+      store.movesetsForms = movesetsForms;
       store.abilities = abilities;
       store.sets = sets;
       store.items = items;
@@ -458,6 +463,19 @@ export function regionalsFor(pokemon) {
   for (const id of evolutionLineIds(pokemon)) {
     const list = store.regionals[id];
     if (list) for (const f of list) out.push({ ...f, speciesId: id });
+  }
+  return out;
+}
+
+// Formas alternativas pós-evolução (Lycanroc Midnight/Dusk, Toxtricity Low
+// Key, Urshifu Rapid Strike…) da LINHA evolutiva. Cada item ganha
+// `siblingId` — a espécie irmã canônica (já na pokedex) de onde ela sai,
+// usado pra achar o mesmo nó-pai e a condição de evolução certa na árvore.
+export function altFormsFor(pokemon) {
+  const out = [];
+  for (const id of evolutionLineIds(pokemon)) {
+    const list = store.altforms[id];
+    if (list) for (const f of list) out.push({ ...f, siblingId: id });
   }
   return out;
 }

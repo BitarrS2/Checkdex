@@ -24,6 +24,13 @@ function writeJSON(key, value) {
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
 export const EMPTY_EVS = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
+export const EMPTY_MOVES = [null, null, null, null];
+
+function normalizeMoves(m) {
+  const moves = Array.isArray(m) ? m.slice(0, 4).map((x) => x || null) : [];
+  while (moves.length < 4) moves.push(null);
+  return moves;
+}
 
 function normalizeSlot(s) {
   if (!s || !s.pokemonId) return null;
@@ -31,8 +38,10 @@ function normalizeSlot(s) {
     pokemonId: s.pokemonId,
     formKey: s.formKey || null, // null = espécie base; senão chave da Mega/forma regional
     item: s.item || null,
+    ability: s.ability || null,
     nature: s.nature || null,
     evs: { ...EMPTY_EVS, ...(s.evs || {}) },
+    moves: normalizeMoves(s.moves),
   };
 }
 function normalizeTeam(t) {
@@ -97,7 +106,7 @@ export function renameTeam(id, name) {
 export function setSlot(teamId, idx, patch) {
   const t = getTeam(teamId);
   if (!t) return;
-  const cur = t.slots[idx] || { pokemonId: null, item: null, nature: null, evs: { ...EMPTY_EVS } };
+  const cur = t.slots[idx] || { pokemonId: null, item: null, ability: null, nature: null, evs: { ...EMPTY_EVS }, moves: [...EMPTY_MOVES] };
   t.slots[idx] = normalizeSlot({ ...cur, ...patch });
   persist();
   emit();
@@ -107,5 +116,19 @@ export function clearSlot(teamId, idx) {
   if (!t) return;
   t.slots[idx] = null;
   persist();
+  emit();
+}
+
+/* ---- exportar / importar (backup em arquivo) ---- */
+export function exportTeams() {
+  return { teams: teams.map((t) => structuredClone(t)), activeId };
+}
+
+export function importTeams(data) {
+  if (!data || !Array.isArray(data.teams)) return;
+  teams = data.teams.map(normalizeTeam);
+  activeId = teams.some((t) => t.id === data.activeId) ? data.activeId : (teams[0]?.id || null);
+  persist();
+  persistActive();
   emit();
 }

@@ -23,7 +23,11 @@ createServer(async (req, res) => {
     if (urlPath === "/") urlPath = "/index.html";
     const filePath = join(ROOT, normalize(urlPath).replace(/^(\.\.[/\\])+/, ""));
     const body = await readFile(filePath);
-    res.writeHead(200, { "Content-Type": TYPES[extname(filePath)] || "application/octet-stream" });
+    res.writeHead(200, {
+      "Content-Type": TYPES[extname(filePath)] || "application/octet-stream",
+      // servidor só de dev: sem cache, pra sempre refletir o arquivo atual no navegador
+      "Cache-Control": "no-store",
+    });
     res.end(body);
   } catch {
     res.writeHead(404, { "Content-Type": "text/plain" });

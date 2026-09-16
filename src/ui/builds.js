@@ -33,7 +33,7 @@ export function smogonSets(entry, gen) {
     const stone = slugName(entry.stone || "");
     return stone ? list.filter((s) => (s.item || []).some((it) => slugName(it) === stone)) : [];
   }
-  const raw = entry.regKey || slugName(entry.name);
+  const raw = entry.regKey || entry.altKey || slugName(entry.name);
   const key = sets[raw] ? raw : (BASE_FORM.test(raw) ? raw.replace(BASE_FORM, "") : raw);
   const stones = megaStoneSet();
   return (sets[key]?.[gen] || []).filter((s) => !(s.item || []).some((it) => stones.has(slugName(it))));
@@ -44,7 +44,7 @@ export function smogonSets(entry, gen) {
 // site-fonte não estrutura isso por Pokémon, só em pastes de time.
 export function metavgcSet(entry) {
   const data = store.metavgc || {};
-  const key = entry.mega || entry.regKey ? entry.id : slugName(entry.name);
+  const key = entry.mega || entry.regKey || entry.altKey ? entry.id : slugName(entry.name);
   return data[key] || null;
 }
 
@@ -266,6 +266,21 @@ export function recommendItem(pokemon, gen) {
     why: ITEM_WHY[slug] || (Object.values(TYPE_ITEM).includes(slug) ? TYPE_ITEM_WHY : ""),
   }));
   return { list };
+}
+
+// Movepool legal de um Pokémon/forma: todos os golpes que ele pode aprender em
+// algum jogo, por qualquer método (nível, MT, tutor, ovo). Formas regionais e
+// variações pós-evolução (Alola/Galar/Hisui/Paldea, Lycanroc Midnight/Dusk,
+// Toxtricity Low Key, Urshifu Rapid Strike, Meowstic Fêmea) têm learnset
+// PRÓPRIO — puxado de `movesetsForms` quando existe; Mega Evolução e formas
+// "cosméticas" (ex.: Polteageist Antique) usam o movepool da espécie base,
+// porque no jogo elas herdam os golpes já aprendidos por ela.
+export function legalMovesFor(pokemonId, formKey) {
+  const set = (formKey && store.movesetsForms[formKey]) || store.movesets[pokemonId] || {};
+  return Object.keys(set)
+    .filter((slug) => store.moves[slug])
+    .map((slug) => ({ slug, ...store.moves[slug] }))
+    .sort((a, b) => a.n.localeCompare(b.n));
 }
 
 /* ---------------- golpes ---------------- */

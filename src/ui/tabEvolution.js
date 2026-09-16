@@ -3,10 +3,10 @@
 // no card e o método na seta). Clicar num nó marca a captura.
 
 import { el, pad3 } from "./dom.js";
-import { evolutionStages, regionalsFor, store } from "../data.js";
+import { evolutionStages, regionalsFor, altFormsFor, store } from "../data.js";
 import {
   isCaught, toggleCaught, isCaughtShiny, toggleCaughtShiny, isShiny, subscribe,
-  isRegionalCaught, toggleRegionalCaught,
+  isRegionalCaught, toggleRegionalCaught, isAltCaught, toggleAltCaught,
 } from "../state.js";
 import { typeSymbol } from "./types.js";
 import { describeCond, pickCond } from "./evoText.js";
@@ -19,7 +19,7 @@ const toggleCaughtOf = (id) => (isShiny() ? toggleCaughtShiny : toggleCaught)(id
 const ARROW = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4l9 8-9 8"/></svg>';
 const REGION_PT = { alola: "Alola", galar: "Galar", hisui: "Hisui", paldea: "Paldea" };
 const typesOf = (id) => store.byId.get(id)?.types ?? [];
-const nodeTypes = (node) => (node.regKey ? node.types : typesOf(node.id));
+const nodeTypes = (node) => (node.regKey || node.altKey ? node.types : typesOf(node.id));
 
 // Espécies canônicas que só evoluem a partir de UMA forma regional específica —
 // não penduram no tronco canônico, e sim no ramo daquela região.
@@ -39,9 +39,10 @@ const REGIONAL_ONLY_EVO = {
 export function renderEvolution(pokemon) {
   const stages = evolutionStages(pokemon);
   const regionals = regionalsFor(pokemon);
+  const alts = altFormsFor(pokemon);
 
   const wrap = el("div", { class: "evo-tab" });
-  if (stages.length <= 1 && !regionals.length) {
+  if (stages.length <= 1 && !regionals.length && !alts.length) {
     wrap.append(el("p", { class: "evo--none" }, `${pokemon.name} não evolui.`));
     return wrap;
   }
@@ -65,6 +66,7 @@ export function renderEvolution(pokemon) {
   // enxerta as formas regionais como ramos; as formas-base regionais (evo 1)
   // voltam como raízes extras, empilhadas junto da linha canônica.
   const extraRoots = spliceRegionals(regionals, nodes, root);
+  spliceAltForms(alts, nodes);
 
   const branches = [root, ...extraRoots].map((r) => renderBranch(r, pokemon.id));
   const forest = extraRoots.length
@@ -88,6 +90,11 @@ export function renderEvolution(pokemon) {
     if (kind === "mega" || kind === "caught") {
       for (const node of tree.querySelectorAll(".evo__node[data-rk]")) {
         const on = isRegionalCaught(node.dataset.rk);
+        node.classList.toggle("is-caught", on);
+        node.setAttribute("aria-pressed", String(on));
+      }
+      for (const node of tree.querySelectorAll(".evo__node[data-ak]")) {
+        const on = isAltCaught(node.dataset.ak);
         node.classList.toggle("is-caught", on);
         node.setAttribute("aria-pressed", String(on));
       }
@@ -136,6 +143,26 @@ function spliceRegionals(regionals, nodes, root) {
   return extraRoots;
 }
 
+// formas alternativas pós-evolução (Lycanroc Midnight/Dusk, Toxtricity Low
+// Key, Urshifu Rapid Strike…): cada uma vira um nó IRMÃO da forma canônica
+// que já está na pokedex — mesmo pai, mesmo N.º, condição de evolução
+// diferente (achada em `sibling.conditions` pelo filtro `match`).
+function spliceAltForms(alts, nodes) {
+  for (const f of alts) {
+    const sibling = nodes.get(f.siblingId);
+    if (!sibling) continue;
+    const cond = (sibling.conditions || []).find((c) =>
+      Object.entries(f.match || {}).every(([k, v]) => c[k] === v));
+    const parent = sibling.from != null ? nodes.get(sibling.from) : null;
+    if (!cond || !parent) continue;
+    parent.kids.push({
+      altKey: f.key, name: f.name, tag: f.tag, sprite: f.sprite, types: f.types,
+      speciesId: f.siblingId, conditions: [cond], conditionLabel: sibling.conditionLabel,
+      kids: [],
+    });
+  }
+}
+
 // um ramo = [nó] + (se tem filhos) [coluna de filhos, cada um com sua condição]
 function renderBranch(node, focusId) {
   const branch = el("div", { class: "evo__branch" }, evoNode(node, focusId));
@@ -178,7 +205,7 @@ function evoCond(parent, kid) {
 
   const c = pickCond(kid.conditions);
   const cond = describeCond(c, kid.conditionLabel);
-  const gained = typesOf(kid.id).filter((t) => !nodeTypes(parent).includes(t));
+  const gained = nodeTypes(kid).filter((t) => !nodeTypes(parent).includes(t));
   const itemSlug = c && (c.itemSlug || c.heldItemSlug);
   const hasIcon = itemSlug && store.evoItems.has(itemSlug);
   return el("span", { class: "evo__cond" + (hasIcon ? " evo__cond--item" : "") },
@@ -194,6 +221,24 @@ function evoCond(parent, kid) {
 }
 
 function evoNode(node, focusId) {
+  if (node.altKey) {
+    const on = isAltCaught(node.altKey);
+    return el("button", {
+      class: "evo__node evo__node--alt" + (on ? " is-caught" : ""),
+      type: "button", role: "listitem",
+      "aria-pressed": String(on),
+      dataset: { ak: node.altKey },
+      onclick: () => toggleAltCaught(node.altKey),
+    },
+      el("i", {}),
+      el("span", { class: "evo__alttag" }, node.tag || "FORMA"),
+      spriteImg(node.sprite, { alt: node.name }),
+      el("b", {}, node.name),
+      el("span", { class: "evo__id" }, "N.º " + pad3(node.speciesId)),
+      el("span", { class: "evo__types" }, ...node.types.map(typeSymbol)),
+    );
+  }
+
   if (node.regKey) {
     const on = isRegionalCaught(node.regKey);
     return el("button", {

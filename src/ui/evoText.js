@@ -13,8 +13,10 @@ const ITEM_FIX = {
 };
 const itemName = (raw) => ITEM_FIX[raw] || raw;
 
-const TOD = { day: "de dia", night: "à noite", "": "" };
+const TOD = { day: "de dia", night: "à noite", dusk: "ao entardecer", "": "" };
 const tod = (t) => TOD[t] ?? "";
+
+const NATURE_GROUP_PT = { amped: "natureza enérgica", "low-key": "natureza tranquila" };
 
 const TYPE_PT = {
   normal: "Normal", fire: "Fire", water: "Water", grass: "Grass",
@@ -58,6 +60,7 @@ function extrasOf(c) {
   if (c.relativePhysicalStats === 0) e.push("Atk = Def");
   if (c.partySpecies) e.push(`com ${c.partySpecies} no time`);
   if (c.partyType) e.push(`com tipo ${TYPE_PT[c.partyType] || c.partyType} no time`);
+  if (c.natureGroup) e.push(NATURE_GROUP_PT[c.natureGroup] || c.natureGroup);
   if (c.needsOverworldRain) e.push("na chuva");
   if (c.location) e.push(`em ${c.location}`);
   if (c.turnUpsideDown) e.push("com o console de cabeça pra baixo");

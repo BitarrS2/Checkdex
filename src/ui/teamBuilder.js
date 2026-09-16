@@ -6,15 +6,24 @@
 
 import { el, clear, debounce, pad3 } from "./dom.js";
 import { store, loadBuildsData } from "../data.js";
-import { spriteImg } from "./sprite.js";
-import { typeSymbol } from "./types.js";
-import { STAT_KEYS, STAT_ABBR, STAT_FULL, NATURE_NAME, NATURE_EFFECT, slugName, recommendItem } from "./builds.js";
+import { spriteImg, shinyPath, registerSprite } from "./sprite.js";
+import { isShiny } from "../state.js";
+import { typeSymbol, TYPE_LABEL } from "./types.js";
+import { TYPES } from "../search.js";
+import { STAT_KEYS, STAT_ABBR, STAT_FULL, NATURE_NAME, NATURE_EFFECT, slugName, recommendItem, legalMovesFor } from "./builds.js";
 import * as teamsStore from "../teams.js";
 import * as favorites from "../favorites.js";
+
+const pad4 = (n) => String(n).padStart(4, "0");
+// fallback pra nome de habilidade quando abilities.json ainda não carregou
+// (ex.: "flash-fire" -> "Flash Fire")
+const capWords = (s) => s.split("-").map((w) => w[0].toUpperCase() + w.slice(1)).join(" ");
 
 const LEVEL = 100;
 const IV = 31;
 const SLOT_COUNT = 6;
+
+const CAT_PT = { phys: "Fís.", spec: "Esp.", stat: "Stat." };
 
 const NEUTRAL_NATURES = ["hardy", "docile", "serious", "bashful", "quirky"];
 const NATURE_NEUTRAL_NAME = {
@@ -25,6 +34,9 @@ const natureLabel = (key) => NATURE_NAME[key] || NATURE_NEUTRAL_NAME[key] || key
 // Um slot pode guardar a espécie base, uma Mega Evolução ou uma forma regional
 // — todas achatadas num mesmo formato "mon-like" pra renderizar igual.
 // `megaStoneSlug` só existe pras Megas com pedra conhecida — trava o item.
+// `abilities`: [{slug, hidden}] pra escolher no editor. Mega tem habilidade
+// fixa (`abilityLocked`); formas regionais/alternativas ainda não têm esse
+// dado na base — ficam com lista vazia (editor mostra aviso em vez de opções).
 function resolveMon(slot) {
   if (!slot) return null;
   if (slot.formKey) {
@@ -32,13 +44,17 @@ function resolveMon(slot) {
     if (mega) return {
       name: mega.name, types: mega.types, stats: mega.stats, sprite: mega.sprite,
       megaStoneSlug: mega.stone ? slugName(mega.stone) : null,
+      abilities: mega.ability ? [{ slug: mega.ability, hidden: false }] : [],
+      abilityLocked: true,
     };
     const reg = (store.regionals[slot.pokemonId] || []).find((r) => r.key === slot.formKey);
-    if (reg) return { name: reg.name, types: reg.types, stats: reg.stats, sprite: reg.sprite, megaStoneSlug: null };
+    if (reg) return { name: reg.name, types: reg.types, stats: reg.stats, sprite: reg.sprite, megaStoneSlug: null, abilities: [], abilityLocked: false };
+    const alt = (store.altforms[slot.pokemonId] || []).find((f) => f.key === slot.formKey);
+    if (alt) return { name: alt.name, types: alt.types, stats: alt.stats, sprite: alt.sprite, megaStoneSlug: null, abilities: [], abilityLocked: false };
     return null;
   }
   const p = store.byId.get(slot.pokemonId);
-  return p ? { name: p.name, types: p.types, stats: p.stats, sprite: p.sprite, megaStoneSlug: null } : null;
+  return p ? { name: p.name, types: p.types, stats: p.stats, sprite: p.sprite, megaStoneSlug: null, abilities: p.abilities || [], abilityLocked: false } : null;
 }
 
 // pedra correspondente a uma linha da busca de Pokémon (null se não for Mega
@@ -69,8 +85,9 @@ function nameStarts(name, q) {
   return lower.split(/[^a-z0-9à-ú]+/).some((w) => w.startsWith(q));
 }
 
-// Todas as espécies base + Megas + formas regionais, achatadas numa lista
-// buscável só por nome (id serve pro número de referência das espécies base).
+// Todas as espécies base + Megas + formas regionais + variações (Lycanroc
+// Midnight/Dusk, Toxtricity Low Key, Urshifu Rapid Strike…), achatadas numa
+// lista buscável só por nome (id serve pro número de referência das espécies base).
 function allSpeciesRows(q) {
   const rows = [];
   for (const p of store.pokedex) {
@@ -92,36 +109,21 @@ function allSpeciesRows(q) {
       }
     }
   }
+  for (const [speciesId, list] of Object.entries(store.altforms || {})) {
+    for (const f of list) {
+      if (!q || nameStarts(f.name, q)) {
+        rows.push({ pokemonId: Number(speciesId), formKey: f.key, name: f.name, sprite: f.sprite, types: f.types, num: Number(speciesId) });
+      }
+    }
+  }
   rows.sort((a, b) => a.num - b.num || (a.formKey ? 1 : 0) - (b.formKey ? 1 : 0));
   return rows;
 }
 
-// Uma linha de resultado a partir de {pokemonId, formKey} — resolve espécie
-// base / Mega / regional pro mesmo formato de linha do buscador.
-function rowFor(pokemonId, formKey) {
-  if (formKey) {
-    const mega = (store.megas[pokemonId] || []).find((m) => m.key === formKey);
-    if (mega) return { pokemonId, formKey, name: mega.name, sprite: mega.sprite, types: mega.types, num: pokemonId };
-    const reg = (store.regionals[pokemonId] || []).find((r) => r.key === formKey);
-    if (reg) return { pokemonId, formKey, name: reg.name, sprite: reg.sprite, types: reg.types, num: pokemonId };
-    return null;
-  }
-  const p = store.byId.get(pokemonId);
-  return p ? { pokemonId, formKey: null, name: p.name, sprite: p.sprite, types: p.types, num: pokemonId } : null;
-}
-
-// Pokémon favoritados, prontos pra lista (aparecem antes de digitar qualquer
-// busca — um favorito que já não existe mais em nenhum dado é descartado).
-function favoriteRows() {
-  return favorites.listFavorites()
-    .map((f) => rowFor(f.pokemonId, f.formKey))
-    .filter(Boolean)
-    .sort((a, b) => a.num - b.num || (a.formKey ? 1 : 0) - (b.formKey ? 1 : 0));
-}
-
 let root, grid, nameInput, teamSelect, boxTitle;
-let pickerEl, pickerSearch, pickerList, pickerTitle, pickerRender;
-let editorEl, editorBody, editorSprite, editorTitle, editorTypes, editorFav, editorCtx = null;
+let pickerEl, pickerCard, pickerSearch, pickerTypebar, pickerList, pickerTitle, pickerRender;
+let pickerTypeFilter = "all";
+let editorEl, editorBody, editorSprite, editorTitle, editorTypes, editorCtx = null;
 
 export function mountTeamBuilder(container) {
   root = el("div", { class: "teamz", hidden: true, role: "dialog", "aria-modal": "true", "aria-label": "Montar times de batalha" });
@@ -235,11 +237,12 @@ function buildSlotTile(team, idx) {
       type: "button", class: "slot slot--empty",
       onclick: () => openSpeciesPicker((pokemonId, formKey) => {
         teamsStore.setSlot(team.id, idx, {
-          pokemonId, formKey, item: megaStoneFor(pokemonId, formKey), nature: null, evs: { ...teamsStore.EMPTY_EVS },
+          pokemonId, formKey, item: megaStoneFor(pokemonId, formKey), nature: null,
+          evs: { ...teamsStore.EMPTY_EVS }, moves: [...teamsStore.EMPTY_MOVES],
         });
         refreshGrid();
         openEditor(team.id, idx);
-      }),
+      }, { slotLabel: `Espaço ${idx + 1}` }),
     },
       el("span", { class: "slot__plus", "aria-hidden": "true" }, "+"),
       el("span", { class: "slot__label" }, `Espaço ${idx + 1}`),
@@ -248,7 +251,9 @@ function buildSlotTile(team, idx) {
 
   const evTotal = STAT_KEYS.reduce((s, k) => s + (slot.evs[k] || 0), 0);
   const itemName = slot.item ? (store.items[slot.item]?.n || slot.item) : "Sem item";
+  const abName = slot.ability ? (store.abilities[slot.ability]?.n || capWords(slot.ability)) : "—";
   const natName = slot.nature ? natureLabel(slot.nature) : "—";
+  const moveCount = slot.moves.filter(Boolean).length;
 
   return el("div", { class: "slot slot--filled", style: `--tcol:var(--type-${mon.types[0]})` },
     el("button", {
@@ -261,8 +266,10 @@ function buildSlotTile(team, idx) {
       el("span", { class: "slot__typerow" }, ...mon.types.map((t) => typeSymbol(t))),
       el("span", { class: "slot__meta" },
         el("span", { class: "slot__metarow" }, el("b", {}, "Item: "), itemName),
+        el("span", { class: "slot__metarow" }, el("b", {}, "Hab.: "), abName),
         el("span", { class: "slot__metarow" }, el("b", {}, "Nat.: "), natName),
         el("span", { class: "slot__metarow" }, el("b", {}, "EVs: "), `${evTotal}/508`),
+        el("span", { class: "slot__metarow" }, el("b", {}, "Golpes: "), `${moveCount}/4`),
       ),
     ),
   );
@@ -270,29 +277,28 @@ function buildSlotTile(team, idx) {
 
 /* ---------------- editor de um espaço (item / natureza / EVs) ---------------- */
 function buildEditor() {
-  editorSprite = el("img", { class: "slotEdit__sprite", alt: "" });
+  editorSprite = registerSprite(el("img", { class: "slotEdit__sprite", alt: "" }));
   editorTitle = el("strong", { class: "slotEdit__name" });
   editorTypes = el("span", { class: "slotEdit__types" });
-  editorFav = el("button", {
-    type: "button", class: "slotEdit__fav", "aria-label": "Favoritar Pokémon", title: "Favoritar",
-    onclick: () => {
-      const { teamId, idx } = editorCtx;
-      const slot = teamsStore.getTeam(teamId)?.slots[idx];
-      if (!slot) return;
-      favorites.toggleFavorite(slot.pokemonId, slot.formKey);
-      syncFavBtn(slot);
-    },
-  }, "★");
   const swapBtn = el("button", {
     type: "button", class: "slotEdit__swap",
-    onclick: () => openSpeciesPicker((pokemonId, formKey) => {
-      const stone = megaStoneFor(pokemonId, formKey);
-      const patch = { pokemonId, formKey };
-      if (stone) patch.item = stone; // Mega com pedra conhecida: item vira a pedra, sem exceção
-      teamsStore.setSlot(editorCtx.teamId, editorCtx.idx, patch);
-      refreshGridTile(editorCtx.idx);
-      openEditor(editorCtx.teamId, editorCtx.idx);
-    }),
+    onclick: () => {
+      const slot = teamsStore.getTeam(editorCtx.teamId)?.slots[editorCtx.idx];
+      openSpeciesPicker((pokemonId, formKey) => {
+        const stone = megaStoneFor(pokemonId, formKey);
+        // troca de espécie/forma: golpes e habilidade zeram, porque o learnset e
+        // as habilidades legais mudam (uma forma regional, por exemplo, não tem
+        // as mesmas habilidades da base)
+        const patch = { pokemonId, formKey, moves: [...teamsStore.EMPTY_MOVES], ability: null };
+        if (stone) patch.item = stone; // Mega com pedra conhecida: item vira a pedra, sem exceção
+        teamsStore.setSlot(editorCtx.teamId, editorCtx.idx, patch);
+        refreshGridTile(editorCtx.idx);
+        openEditor(editorCtx.teamId, editorCtx.idx);
+      }, {
+        slotLabel: `Espaço ${editorCtx.idx + 1}`,
+        current: slot ? { pokemonId: slot.pokemonId, formKey: slot.formKey } : null,
+      });
+    },
   }, "Trocar Pokémon");
   const closeBtn = el("button", { type: "button", class: "slotEdit__close", "aria-label": "Fechar", onclick: closeEditor }, "×");
 
@@ -301,7 +307,7 @@ function buildEditor() {
   const head = el("header", { class: "slotEdit__head" },
     editorSprite,
     el("div", { class: "slotEdit__titlewrap" }, editorTitle, editorTypes),
-    editorFav, swapBtn, closeBtn,
+    swapBtn, closeBtn,
   );
   const backdrop = el("div", { class: "slotEdit__backdrop", onclick: closeEditor });
   const card = el("div", { class: "slotEdit__card" }, head, editorBody);
@@ -309,19 +315,12 @@ function buildEditor() {
   root.append(editorEl);
 }
 
-function syncFavBtn(slot) {
-  const on = favorites.isFavorite(slot.pokemonId, slot.formKey);
-  editorFav.classList.toggle("is-fav", on);
-  editorFav.setAttribute("aria-pressed", String(on));
-  editorFav.title = on ? "Remover dos favoritos" : "Favoritar";
-}
-
 function sectionEl(label, ...content) {
   return el("section", { class: "slotEdit__sec" }, el("h4", { class: "slotEdit__sechead" }, label), ...content);
 }
-function itemImg(slug) {
+function itemImg(slug, cls = "pk__itemimg") {
   return el("img", {
-    src: `assets/items/${slug}.png`, alt: "", class: "pk__itemimg", loading: "lazy",
+    src: `assets/items/${slug}.png`, alt: "", class: cls, loading: "lazy",
     onerror: (e) => e.target.remove(),
   });
 }
@@ -333,9 +332,10 @@ function openEditor(teamId, idx) {
   if (!mon) return;
   editorCtx = { teamId, idx };
 
-  editorSprite.src = mon.sprite;
+  editorSprite.dataset.spr = mon.sprite;
+  editorSprite.dataset.sprShiny = shinyPath(mon.sprite);
+  editorSprite.src = isShiny() ? editorSprite.dataset.sprShiny : mon.sprite;
   editorTitle.textContent = mon.name;
-  syncFavBtn(slot);
   clear(editorTypes);
   for (const t of mon.types) editorTypes.append(typeSymbol(t));
   clear(editorBody);
@@ -349,17 +349,6 @@ function openEditor(teamId, idx) {
   const locked = !!mon.megaStoneSlug;
   const itemBtn = el("button", { type: "button", class: "slotEdit__itembtn", disabled: locked });
   const itemDesc = el("p", { class: "slotEdit__itemdesc" });
-  const itemFavBtn = el("button", {
-    type: "button", class: "slotEdit__fav slotEdit__fav--sm", "aria-label": "Favoritar item", title: "Favoritar item",
-    onclick: () => { favorites.toggleItemFavorite(slot.item); syncItemFav(); },
-  }, "★");
-  const syncItemFav = () => {
-    const show = !locked && !!slot.item;
-    itemFavBtn.hidden = !show;
-    const on = show && favorites.isItemFavorite(slot.item);
-    itemFavBtn.classList.toggle("is-fav", !!on);
-    itemFavBtn.setAttribute("aria-pressed", String(!!on));
-  };
   const syncItemBtn = () => {
     clear(itemBtn);
     if (slot.item) {
@@ -369,7 +358,6 @@ function openEditor(teamId, idx) {
       itemBtn.append(el("span", { class: "slotEdit__itemplaceholder" }, "Escolher item…"));
       itemDesc.textContent = "";
     }
-    syncItemFav();
   };
   syncItemBtn();
   if (!locked) {
@@ -380,8 +368,54 @@ function openEditor(teamId, idx) {
       refreshGridTile(idx);
     }, { pokemonId: slot.pokemonId, types: mon.types, stats: mon.stats });
   }
-  editorBody.append(sectionEl("Item", el("div", { class: "slotEdit__itemrow" }, itemBtn, itemFavBtn), itemDesc,
+  editorBody.append(sectionEl("Item", el("div", { class: "slotEdit__itemrow" }, itemBtn), itemDesc,
     locked ? el("p", { class: "slotEdit__note" }, "Mega Evolução — o item é sempre essa pedra, não dá pra trocar.") : null));
+
+  /* habilidade — chips com todas as habilidades legais da forma; a
+     descrição da escolhida some embaixo. Mega tem habilidade fixa (trava,
+     igual ao item); formas regionais/alternativas ainda não têm esse dado
+     na base, então mostram só um aviso em vez de opções. */
+  const abilities = mon.abilities || [];
+  const abilityLocked = !!mon.abilityLocked;
+  if (abilityLocked && abilities.length && slot.ability !== abilities[0].slug) {
+    slot.ability = abilities[0].slug;
+    teamsStore.setSlot(teamId, idx, { ability: abilities[0].slug });
+    refreshGridTile(idx);
+  }
+  const abilityRow = el("div", { class: "builds__itemrow" });
+  const abilityDesc = el("p", { class: "slotEdit__itemdesc" });
+  const syncAbilityUI = () => {
+    clear(abilityRow);
+    if (!abilities.length) { abilityDesc.textContent = ""; return; }
+    const cur = abilities.find((a) => a.slug === slot.ability) || abilities[0];
+    for (const a of abilities) {
+      const info = store.abilities[a.slug];
+      abilityRow.append(el("button", {
+        type: "button",
+        class: "builds__itemchip" + (a.slug === cur.slug ? " is-active" : ""),
+        "aria-pressed": String(a.slug === cur.slug),
+        disabled: abilityLocked || undefined,
+        onclick: () => {
+          slot.ability = a.slug;
+          teamsStore.setSlot(teamId, idx, { ability: a.slug });
+          refreshGridTile(idx);
+          syncAbilityUI();
+        },
+      },
+        el("span", {}, info?.n || capWords(a.slug)),
+        a.hidden ? el("span", { class: "builds__hidden" }, "oculta") : null,
+      ));
+    }
+    abilityDesc.textContent = store.abilities[cur.slug]?.short || "";
+  };
+  syncAbilityUI();
+  loadBuildsData().then(() => { if (editorCtx?.teamId === teamId && editorCtx?.idx === idx) syncAbilityUI(); });
+  editorBody.append(sectionEl("Habilidade", abilityRow, abilityDesc,
+    !abilities.length
+      ? el("p", { class: "slotEdit__note" }, `Habilidades de ${mon.name} ainda não estão na nossa base de dados.`)
+      : abilityLocked
+        ? el("p", { class: "slotEdit__note" }, "Mega Evolução — a habilidade muda automaticamente, não dá pra trocar.")
+        : null));
 
   /* natureza */
   const natSel = el("select", { class: "slotEdit__natsel" },
@@ -447,6 +481,59 @@ function openEditor(teamId, idx) {
   editorBody.append(sectionEl("Stats (EVs)", budgetEl, statsWrap,
     el("p", { class: "slotEdit__note" }, "Calculado com IV 31 (perfeito) e Nível 100, como em batalha.")));
 
+  /* golpes — só os que essa forma específica realmente aprende (nível, MT,
+     tutor ou ovo, em algum jogo); formas regionais e variações pós-evolução
+     têm seu próprio learnset, não o da espécie base. Cada espaço abre o
+     mesmo seletor de busca usado pra item/Pokémon, filtrado pro golpe. */
+  const legalMoves = legalMovesFor(slot.pokemonId, slot.formKey);
+  const movesWrap = el("div", { class: "slotEdit__movegrid" });
+  for (let i = 0; i < 4; i++) {
+    const setMove = (slug) => {
+      const moves = [...slot.moves];
+      moves[i] = slug;
+      slot.moves = moves;
+      teamsStore.setSlot(teamId, idx, { moves });
+      syncSlot();
+      refreshGridTile(idx);
+    };
+    const mainBtn = el("button", { type: "button", class: "slotEdit__movemain" });
+    const clearBtn = el("button", {
+      type: "button", class: "slotEdit__moveclear", "aria-label": `Remover golpe ${i + 1}`, title: "Remover golpe",
+      onclick: (e) => { e.stopPropagation(); setMove(null); },
+    }, "×");
+    const wrap = el("div", { class: "slotEdit__moveslot" }, mainBtn, clearBtn);
+    const syncSlot = () => {
+      clear(mainBtn);
+      const m = legalMoves.find((x) => x.slug === slot.moves[i]);
+      wrap.classList.toggle("has-move", !!m);
+      wrap.style.setProperty("--tcol", m ? `var(--type-${m.t})` : "");
+      clearBtn.hidden = !m;
+      mainBtn.append(m
+        ? el("div", { class: "slotEdit__moverow" },
+          typeSymbol(m.t),
+          el("span", { class: "slotEdit__movename" }, m.n),
+          el("span", { class: "slotEdit__movemeta" },
+            m.p ? el("span", { class: "slotEdit__movepow" }, String(m.p)) : el("span", { class: "slotEdit__movepow is-dash" }, "—"),
+            el("span", { class: "slotEdit__movecat" }, CAT_PT[m.c] || ""),
+          ),
+        )
+        : el("div", { class: "slotEdit__moverow" },
+          el("span", { class: "slotEdit__moveplus", "aria-hidden": "true" }, "+"),
+          el("span", { class: "slotEdit__moveplaceholder" }, `Golpe ${i + 1}`),
+        ));
+    };
+    mainBtn.onclick = () => openMovePicker(setMove, {
+      legalMoves, exclude: slot.moves.filter((v, j) => j !== i && v),
+    });
+    syncSlot();
+    movesWrap.append(wrap);
+  }
+  editorBody.append(sectionEl("Golpes", movesWrap,
+    el("p", { class: "slotEdit__note" },
+      legalMoves.length
+        ? `Só golpes que ${mon.name} realmente aprende (nível, MT, tutor ou ovo, em algum jogo) — sem repetir golpe no time.`
+        : `Sem dados de golpes conhecidos para ${mon.name}.`)));
+
   editorEl.hidden = false;
 }
 
@@ -477,30 +564,88 @@ function buildPicker() {
   pickerTitle = el("h3", { class: "pk__title" });
   pickerSearch = el("input", { class: "pk__search", type: "search", placeholder: "Buscar…", autocomplete: "off" });
   const closeBtn = el("button", { type: "button", class: "pk__close", "aria-label": "Fechar busca", onclick: closePicker }, "×");
+  const searchRow = el("div", { class: "pk__searchrow" },
+    el("span", { class: "pk__searchicon", "aria-hidden": "true" }, "›"),
+    pickerSearch,
+  );
+
+  pickerTypebar = el("nav", { class: "pk__typebar", hidden: true, "aria-label": "Filtrar por tipo" },
+    el("button", {
+      type: "button", class: "pk__typebtn is-active", dataset: { t: "all" },
+      onclick: () => setPickerType("all"),
+    }, "Todos"),
+    ...TYPES.map((t) => el("button", {
+      type: "button", class: "pk__typebtn", dataset: { t },
+      onclick: () => setPickerType(t),
+    }, TYPE_LABEL[t])),
+  );
+  // arrasta com o mouse pra rolar os tipos (trackpad/touch já rolam nativamente,
+  // e a roda vertical do mouse também vira scroll horizontal aqui)
+  pickerTypebar.addEventListener("wheel", (e) => {
+    if (!e.deltaY) return;
+    e.preventDefault();
+    pickerTypebar.scrollLeft += e.deltaY;
+  }, { passive: false });
+  let dragX = 0, dragScroll = 0, dragging = false, dragMoved = false;
+  pickerTypebar.addEventListener("pointerdown", (e) => {
+    dragging = true; dragMoved = false;
+    dragX = e.clientX; dragScroll = pickerTypebar.scrollLeft;
+  });
+  pickerTypebar.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - dragX;
+    if (Math.abs(dx) > 4) dragMoved = true;
+    if (dragMoved) {
+      pickerTypebar.classList.add("is-dragging");
+      pickerTypebar.scrollLeft = dragScroll - dx;
+    }
+  });
+  const endDrag = () => { dragging = false; pickerTypebar.classList.remove("is-dragging"); };
+  pickerTypebar.addEventListener("pointerup", endDrag);
+  pickerTypebar.addEventListener("pointerleave", endDrag);
+  // depois de arrastar, o click seguinte no botão não deve contar como escolha
+  pickerTypebar.addEventListener("click", (e) => { if (dragMoved) { e.preventDefault(); e.stopPropagation(); dragMoved = false; } }, true);
+
   pickerList = el("div", { class: "pk__list" });
 
   pickerSearch.addEventListener("input", debounce(() => {
     if (pickerRender) pickerRender(pickerSearch.value.trim().toLowerCase());
   }, 100));
 
-  const card = el("div", { class: "pk__card" },
+  pickerCard = el("div", { class: "pk__card" },
     el("div", { class: "pk__head" }, pickerTitle, closeBtn),
-    pickerSearch,
+    searchRow,
+    pickerTypebar,
     pickerList,
   );
   const backdrop = el("div", { class: "pk__backdrop", onclick: closePicker });
-  pickerEl = el("div", { class: "pk", hidden: true }, backdrop, card);
+  pickerEl = el("div", { class: "pk", hidden: true }, backdrop, pickerCard);
   root.append(pickerEl);
 }
 
-function openPicker(title, renderFn, placeholder) {
+function setPickerType(t) {
+  pickerTypeFilter = t;
+  for (const b of pickerTypebar.children) b.classList.toggle("is-active", b.dataset.t === t);
+  if (pickerRender) pickerRender(pickerSearch.value.trim().toLowerCase());
+}
+
+function openPicker(title, renderFn, placeholder, { grid = false, typebar = grid } = {}) {
   pickerTitle.textContent = title;
   pickerSearch.value = "";
   pickerSearch.placeholder = placeholder || "Buscar…";
   pickerRender = renderFn;
+  pickerTypeFilter = "all";
+  pickerTypebar.hidden = !typebar;
+  for (const b of pickerTypebar.children) b.classList.toggle("is-active", b.dataset.t === "all");
+  pickerList.classList.toggle("pk__list--grid", grid);
+  pickerCard.classList.toggle("pk__card--grid", grid);
   renderFn("");
   pickerEl.hidden = false;
-  requestAnimationFrame(() => pickerSearch.focus());
+  // só foca (e abre o teclado) em quem tem ponteiro fino de verdade — em
+  // touch isso cobria a tela com o teclado assim que o seletor abria.
+  if (matchMedia("(pointer: fine)").matches) {
+    requestAnimationFrame(() => pickerSearch.focus());
+  }
 }
 function closePicker() {
   pickerEl.hidden = true;
@@ -519,46 +664,94 @@ function speciesRowBtn(r, onPick) {
   );
 }
 
-function openSpeciesPicker(onPick) {
-  openPicker("Escolher Pokémon", (q) => {
-    clear(pickerList);
-    if (!q) {
-      const favs = favoriteRows();
-      if (!favs.length) {
-        pickerList.append(el("p", { class: "pk__empty" }, "Digite um nome ou número pra buscar. Favorite (★) um Pokémon no editor pra ele aparecer aqui."));
-        return;
-      }
-      pickerList.append(el("p", { class: "pk__group" }, "Favoritos"));
-      for (const r of favs) pickerList.append(speciesRowBtn(r, onPick));
-      return;
-    }
-    const list = allSpeciesRows(q);
-    if (!list.length) { pickerList.append(el("p", { class: "pk__empty" }, "Nenhum Pokémon encontrado.")); return; }
-    for (const r of list) pickerList.append(speciesRowBtn(r, onPick));
-  }, "Buscar Pokémon por nome ou número");
+function speciesGridCardBtn(r, onPick, isSelected) {
+  const isFav = favorites.isFavorite(r.pokemonId, r.formKey);
+  const favBtn = el("button", {
+    type: "button", class: "pk__gridfav" + (isFav ? " is-fav" : ""),
+    "aria-label": isFav ? "Remover dos favoritos" : "Favoritar", title: isFav ? "Remover dos favoritos" : "Favoritar",
+    "aria-pressed": String(isFav),
+    onclick: (e) => {
+      e.stopPropagation();
+      favorites.toggleFavorite(r.pokemonId, r.formKey);
+      if (pickerRender) pickerRender(pickerSearch.value.trim().toLowerCase());
+    },
+  }, "★");
+
+  const pickBtn = el("button", {
+    type: "button", class: "pk__gridpick",
+    onclick: () => { closePicker(); onPick(r.pokemonId, r.formKey); },
+  },
+    spriteImg(r.sprite, { class: "pk__gridsprite", alt: "", loading: "lazy" }),
+    el("span", { class: "pk__gridname" }, r.name),
+    el("span", { class: "pk__gridnum" }, r.formKey ? "" : "#" + pad4(r.pokemonId)),
+  );
+
+  return el("div", {
+    class: "pk__gridcard" + (isSelected ? " is-sel" : ""),
+    style: `--tcol:var(--type-${r.types[0]})`,
+  }, favBtn, pickBtn);
 }
 
-function itemRowBtn(slug, onPick) {
-  const it = store.items[slug];
-  return el("button", {
-    type: "button", class: "pk__row",
-    onclick: () => { closePicker(); onPick(slug); },
-  }, itemImg(slug), el("span", { class: "pk__rowname" }, it?.n || slug));
+// opts.slotLabel: rótulo do espaço (ex.: "Espaço 1") pro título do seletor.
+// opts.current: {pokemonId, formKey} do Pokémon já no espaço, pra vir destacado na grade.
+function openSpeciesPicker(onPick, opts = {}) {
+  const title = opts.slotLabel ? `Escolher Pokémon — ${opts.slotLabel}` : "Escolher Pokémon";
+  openPicker(title, (q) => {
+    clear(pickerList);
+    const filtered = allSpeciesRows(q).filter(
+      (r) => pickerTypeFilter === "all" || r.types.includes(pickerTypeFilter),
+    );
+    if (!filtered.length) { pickerList.append(el("p", { class: "pk__empty" }, "Nenhum Pokémon encontrado.")); return; }
+
+    const favs = filtered.filter((r) => favorites.isFavorite(r.pokemonId, r.formKey));
+    const rest = filtered.filter((r) => !favorites.isFavorite(r.pokemonId, r.formKey));
+
+    const appendCard = (r) => {
+      const isSelected = !!opts.current
+        && opts.current.pokemonId === r.pokemonId
+        && (opts.current.formKey || null) === (r.formKey || null);
+      pickerList.append(speciesGridCardBtn(r, onPick, isSelected));
+    };
+    // favoritos primeiro, numa seção separada — só aparece quando há algum
+    if (favs.length) {
+      pickerList.append(el("p", { class: "pk__group pk__group--grid" }, "Favoritos"));
+      favs.forEach(appendCard);
+      pickerList.append(el("p", { class: "pk__group pk__group--grid" }, "Todos"));
+    }
+    rest.forEach(appendCard);
+  }, "Buscar por nome ou número", { grid: true });
 }
 
 const ORDINAL = ["1º", "2º", "3º"];
-function recommendedRowBtn(rec, i, onPick) {
-  return el("button", {
-    type: "button", class: "pk__row pk__row--rec",
-    onclick: () => { closePicker(); onPick(rec.slug); },
+
+// mesmo cartão de grade do seletor de Pokémon: ícone + nome + estrela de
+// favorito; opts.rank marca o selo de recomendado (1º/2º/3º) quando presente.
+function itemGridCardBtn(slug, onPick, opts = {}) {
+  const it = store.items[slug];
+  const isFav = favorites.isItemFavorite(slug);
+  const favBtn = el("button", {
+    type: "button", class: "pk__gridfav" + (isFav ? " is-fav" : ""),
+    "aria-label": isFav ? "Remover dos favoritos" : "Favoritar", title: isFav ? "Remover dos favoritos" : "Favoritar",
+    "aria-pressed": String(isFav),
+    onclick: (e) => {
+      e.stopPropagation();
+      favorites.toggleItemFavorite(slug);
+      if (pickerRender) pickerRender(pickerSearch.value.trim().toLowerCase());
+    },
+  }, "★");
+
+  const title = [it?.d, opts.why].filter(Boolean).join(" — ") || undefined;
+  const pickBtn = el("button", {
+    type: "button", class: "pk__gridpick", title,
+    onclick: () => { closePicker(); onPick(slug); },
   },
-    el("span", { class: "pk__recbadge" }, ORDINAL[i] || `${i + 1}º`),
-    itemImg(rec.slug),
-    el("span", { class: "pk__rowtext" },
-      el("span", { class: "pk__rowname" }, rec.name),
-      rec.why ? el("span", { class: "pk__rowwhy" }, rec.why) : null,
-    ),
+    itemImg(slug, "pk__griditemimg"),
+    el("span", { class: "pk__gridname" }, it?.n || slug),
   );
+
+  const recBadge = opts.rank ? el("span", { class: "pk__gridrec" }, ORDINAL[opts.rank - 1] || `${opts.rank}º`) : null;
+
+  return el("div", { class: "pk__gridcard" }, favBtn, recBadge, pickBtn);
 }
 
 // sugestão automática (mesma heurística da aba Builds) pro item de UM
@@ -570,6 +763,17 @@ function recommendedItemsFor(pokemonId, types, stats) {
   return recommendItem(pseudo, 9).list;
 }
 
+// todos os itens buscáveis (sem Mega Stones — cada uma já é travada automático),
+// filtrados pelo nome como allSpeciesRows faz com os Pokémon.
+function allItemRows(q) {
+  const stones = allMegaStoneSlugs();
+  return Object.entries(store.items || {})
+    .filter(([slug]) => !stones.has(slug))
+    .filter(([slug, it]) => !q || nameStarts(it.n, q) || slug.startsWith(q))
+    .map(([slug, it]) => ({ slug, name: it.n }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
 function openItemPicker(onPick, recFor) {
   loadBuildsData().then(() => { if (pickerRender) pickerRender(pickerSearch.value.trim().toLowerCase()); });
   openPicker("Escolher item", (q) => {
@@ -579,36 +783,69 @@ function openItemPicker(onPick, recFor) {
       onclick: () => { closePicker(); onPick(null); },
     }, el("span", { class: "pk__noneico" }, "—"), el("span", { class: "pk__rowname" }, "Nenhum item")));
 
-    const stones = allMegaStoneSlugs();
-    if (!q) {
-      let any = false;
-      if (recFor) {
-        const recs = recommendedItemsFor(recFor.pokemonId, recFor.types, recFor.stats)
-          .filter((r) => store.items[r.slug] && !stones.has(r.slug));
-        if (recs.length) {
-          any = true;
-          pickerList.append(el("p", { class: "pk__group" }, "Recomendados pra esse Pokémon"));
-          recs.forEach((r, i) => pickerList.append(recommendedRowBtn(r, i, onPick)));
-        }
-      }
-      const favs = favorites.listItemFavorites().filter((slug) => store.items[slug] && !stones.has(slug));
-      if (favs.length) {
-        any = true;
-        pickerList.append(el("p", { class: "pk__group" }, "Favoritos"));
-        for (const slug of favs) pickerList.append(itemRowBtn(slug, onPick));
-      }
-      if (!any) pickerList.append(el("p", { class: "pk__empty" }, "Digite pra buscar. Favorite (★) um item no editor pra ele aparecer aqui."));
+    const all = allItemRows(q);
+    if (!all.length) { pickerList.append(el("p", { class: "pk__empty" }, "Nenhum item encontrado.")); return; }
+    const allSlugs = new Set(all.map((r) => r.slug));
+
+    // recomendados e favoritos ficam em seções à parte, como no seletor de
+    // Pokémon — o resto (Todos) entra depois, sem repetir quem já apareceu.
+    const recs = recFor
+      ? recommendedItemsFor(recFor.pokemonId, recFor.types, recFor.stats).filter((r) => allSlugs.has(r.slug))
+      : [];
+    const recSlugs = new Set(recs.map((r) => r.slug));
+    const favSlugs = favorites.listItemFavorites().filter((slug) => allSlugs.has(slug) && !recSlugs.has(slug));
+    const shown = new Set([...recSlugs, ...favSlugs]);
+    const rest = all.filter((r) => !shown.has(r.slug));
+
+    if (recs.length) {
+      pickerList.append(el("p", { class: "pk__group pk__group--grid" }, "Recomendados pra esse Pokémon"));
+      recs.forEach((r, i) => pickerList.append(itemGridCardBtn(r.slug, onPick, { rank: i + 1, why: r.why })));
+    }
+    if (favSlugs.length) {
+      pickerList.append(el("p", { class: "pk__group pk__group--grid" }, "Favoritos"));
+      favSlugs.forEach((slug) => pickerList.append(itemGridCardBtn(slug, onPick)));
+    }
+    if (rest.length) {
+      pickerList.append(el("p", { class: "pk__group pk__group--grid" }, "Todos"));
+      rest.forEach((r) => pickerList.append(itemGridCardBtn(r.slug, onPick)));
+    }
+  }, "Buscar item por nome", { grid: true, typebar: false });
+}
+
+function moveRowBtn(m, onPick) {
+  return el("button", {
+    type: "button", class: "pk__row", style: `--tcol:var(--type-${m.t})`,
+    onclick: () => { closePicker(); onPick(m.slug); },
+  },
+    typeSymbol(m.t),
+    el("span", { class: "pk__rowname" }, m.n),
+    el("span", { class: "pk__rowmeta" },
+      m.p ? el("span", { class: "pk__movepow" }, String(m.p)) : el("span", { class: "pk__movepow is-dash" }, "—"),
+      el("span", { class: "pk__movecat" }, CAT_PT[m.c] || ""),
+    ),
+  );
+}
+
+// opts.legalMoves: golpes que essa forma específica pode aprender de verdade
+// (vem de legalMovesFor). opts.exclude: golpes já usados nos OUTROS espaços
+// de golpe do mesmo Pokémon — não dá pra repetir golpe no time.
+function openMovePicker(onPick, { legalMoves, exclude }) {
+  openPicker("Escolher golpe", (q) => {
+    clear(pickerList);
+    pickerList.append(el("button", {
+      type: "button", class: "pk__row pk__row--none",
+      onclick: () => { closePicker(); onPick(null); },
+    }, el("span", { class: "pk__noneico" }, "—"), el("span", { class: "pk__rowname" }, "Nenhum golpe")));
+
+    const avail = legalMoves.filter((m) => !exclude.includes(m.slug));
+    const filtered = q ? avail.filter((m) => nameStarts(m.n, q)) : avail;
+    if (!filtered.length) {
+      pickerList.append(el("p", { class: "pk__empty" },
+        q ? "Nenhum golpe encontrado." : "Sem golpes legais disponíveis pra esse espaço."));
       return;
     }
-
-    const entries = Object.entries(store.items || {})
-      .filter(([slug]) => !stones.has(slug))
-      .filter(([slug, it]) => nameStarts(it.n, q) || slug.startsWith(q))
-      .sort((a, b) => a[1].n.localeCompare(b[1].n))
-      .slice(0, 80);
-    if (!entries.length) { pickerList.append(el("p", { class: "pk__empty" }, "Nenhum item encontrado.")); return; }
-    for (const [slug] of entries) pickerList.append(itemRowBtn(slug, onPick));
-  }, "Buscar item por nome");
+    for (const m of filtered) pickerList.append(moveRowBtn(m, onPick));
+  }, "Buscar golpe por nome");
 }
 
 /* ---------------- abrir / fechar o menu inteiro ---------------- */
