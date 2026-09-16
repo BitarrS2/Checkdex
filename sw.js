@@ -7,9 +7,13 @@
 //    conforme o usuário visita cada Pokémon — não são baixadas de uma vez (ficariam ~300 MB).
 //  - Fontes do Google Fonts: stale-while-revalidate num cache à parte.
 //
-// Bump SHELL_VERSION sempre que a LISTA de arquivos do shell mudar (arquivo novo/removido).
-// Não precisa bumpar por causa de edição de conteúdo — o stale-while-revalidate já atualiza isso.
-const SHELL_VERSION = "v1";
+// Bump SHELL_VERSION sempre que a LISTA de arquivos do shell mudar (arquivo novo/removido)
+// E TAMBÉM sempre que quiser que uma atualização de conteúdo chegue logo em quem já tem o
+// app instalado: mudar esse número muda os bytes do sw.js, o que é o único jeito do navegador
+// perceber "tem uma versão nova" e mostrar o aviso de atualizar — sem isso, num PWA instalado
+// (que só retoma a aba em vez de recarregar do zero), o stale-while-revalidate pode levar
+// várias reaberturas pra refletir a mudança.
+const SHELL_VERSION = "v2";
 const SHELL_CACHE = `checkdex-shell-${SHELL_VERSION}`;
 const IMAGE_CACHE = "checkdex-images";
 const FONT_CACHE = "checkdex-fonts";

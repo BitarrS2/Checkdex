@@ -88,8 +88,14 @@ export function createBackupMenu() {
 
   const panel = el("div", { class: "backup__panel", role: "dialog", "aria-label": "Backup dos dados", hidden: true },
     el("div", { class: "backup__head" },
-      el("strong", {}, "Backup dos dados"),
-      el("p", {}, "Salve seus capturados, shinies, megas, formas e times num arquivo — ou traga um backup de volta."),
+      el("div", { class: "backup__head-text" },
+        el("strong", {}, "Backup dos dados"),
+        el("p", {}, "Salve seus capturados, shinies, megas, formas e times num arquivo — ou traga um backup de volta."),
+      ),
+      el("button", {
+        type: "button", class: "backup__close", "aria-label": "Fechar",
+        onclick: () => toggle(false),
+      }, "×"),
     ),
     summary,
     el("div", { class: "backup__actions" },
