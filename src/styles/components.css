@@ -496,7 +496,16 @@
   border-radius: var(--r-3);
   padding: 10px;
   transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+  /* com todas as gerações à mostra isso chega a ~1025 cards de uma vez — sem
+     isso o navegador faz layout/pintura de todos, mesmo fora da tela, o que
+     trava a rolagem no celular. Pula esse trabalho pra card fechado fora da
+     tela; a altura aqui é só um palpite (usado enquanto ele fica pulado). */
+  content-visibility: auto;
+  contain-intrinsic-size: 0 94px;
 }
+/* card aberto tem conteúdo bem mais alto (abas, evolução…) e já tá visível
+   por definição (só abre com clique) — não faz sentido pular a pintura dele. */
+.dex .mon.is-open { content-visibility: visible; }
 .mon::before {
   content: "";
   position: absolute; left: 0; top: 14px; bottom: 14px;

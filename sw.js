@@ -15,7 +15,7 @@
 // updateToast.js também força uma checagem sempre que o app volta a ficar visível (não só
 // no load), pro caso comum de PWA instalado onde reabrir pelo ícone só retoma a aba
 // suspensa em vez de recarregar do zero.
-const SHELL_VERSION = "v6";
+const SHELL_VERSION = "v7";
 const SHELL_CACHE = `checkdex-shell-${SHELL_VERSION}`;
 const IMAGE_CACHE = "checkdex-images";
 const FONT_CACHE = "checkdex-fonts";
