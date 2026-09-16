@@ -11,10 +11,11 @@
 // E TAMBÉM sempre que quiser que uma atualização de conteúdo chegue logo em quem já tem o
 // app instalado: mudar esse número muda os bytes do sw.js, o que é o único jeito do navegador
 // perceber "tem uma versão nova" — o SW novo instala e assume sozinho (skipWaiting logo
-// abaixo), sem perguntar nada; a página recarrega na hora (ver updateToast.js). Sem bumpar,
-// num PWA instalado (que só retoma a aba em vez de recarregar do zero), o
-// stale-while-revalidate pode levar várias reaberturas pra refletir a mudança.
-const SHELL_VERSION = "v4";
+// abaixo), sem perguntar nada; a página recarrega na hora (ver updateToast.js). O
+// updateToast.js também força uma checagem sempre que o app volta a ficar visível (não só
+// no load), pro caso comum de PWA instalado onde reabrir pelo ícone só retoma a aba
+// suspensa em vez de recarregar do zero.
+const SHELL_VERSION = "v5";
 const SHELL_CACHE = `checkdex-shell-${SHELL_VERSION}`;
 const IMAGE_CACHE = "checkdex-images";
 const FONT_CACHE = "checkdex-fonts";

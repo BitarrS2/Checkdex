@@ -4,10 +4,21 @@
 export function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
 
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js").catch(() => {
+  let reg = null;
+
+  window.addEventListener("load", async () => {
+    try {
+      reg = await navigator.serviceWorker.register("./sw.js");
+    } catch {
       // offline não é crítico se o SW falhar ao registrar — o app segue funcionando online
-    });
+    }
+  });
+
+  // no celular instalado (PWA), reabrir pelo ícone muitas vezes só retoma a aba
+  // suspensa em vez de recarregar do zero — sem isso, o app nunca chega a checar
+  // de novo por uma versão nova até o processo ser realmente encerrado.
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") reg?.update();
   });
 
   let reloaded = false;
